@@ -61,6 +61,17 @@ header .canva-image {
   letter-spacing: 0;
 }
 
+[data-template-id="about-title"] {
+  font-size: clamp(2rem, 3.2vw, 2.9rem);
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  [data-template-id="about-title"] {
+    white-space: normal;
+  }
+}
+
 [data-template-id="about-desc"],
 [data-template-id="reg-subtitle"],
 [data-template-id="confirm-msg"] {
