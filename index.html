@@ -71,7 +71,9 @@
      </div><button data-template-id="submit-btn" type="submit" class="canva-button w-full py-4 rounded-full font-semibold text-lg transition-all hover:scale-[1.02]"></button>
     </form><!-- Flow B -->
     <form id="flow-b" class="hidden mt-8 space-y-5" onsubmit="showConfirmation(event)">
-     <select name="waitingListStatus" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Waiting List Status</option><option>Confirmed</option><option>Pending</option></select> <select name="studentLevel" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Student Level Applying For</option><option>Playgroup</option><option>Kindergarten</option><option>Grade 1</option></select> <input name="studentName" type="text" placeholder="Student Name" class="w-full p-4 rounded-xl border border-gray-200" required> <input name="parentName" type="text" placeholder="Parent Name" class="w-full p-4 rounded-xl border border-gray-200" required> <input name="phone" type="tel" placeholder="Phone Number" class="w-full p-4 rounded-xl border border-gray-200" required> <input name="email" type="email" placeholder="Email Address" class="w-full p-4 rounded-xl border border-gray-200" required> <select name="attendeeCount" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Number of Attendees</option><option>1</option><option>2</option></select> <select name="lunchBoxCount" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Lunch Box Reservation</option><option>1</option><option>2</option></select>
+     <select name="waitingListStatus" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Waiting List Status</option><option value="paid_commitment_fee">Already Paid Commitment Fee Rp 5.000.000</option><option value="not_yet">Not Yet</option></select>
+     <div id="flow-b-registration-fields" class="space-y-5">
+      <select name="studentLevel" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Student Level Applying For</option><option>Playgroup</option><option>Kindergarten</option><option>Grade 1</option></select> <input name="studentName" type="text" placeholder="Student Name" class="w-full p-4 rounded-xl border border-gray-200" required> <input name="parentName" type="text" placeholder="Parent Name" class="w-full p-4 rounded-xl border border-gray-200" required> <input name="phone" type="tel" placeholder="Phone Number" class="w-full p-4 rounded-xl border border-gray-200" required> <input name="email" type="email" placeholder="Email Address" class="w-full p-4 rounded-xl border border-gray-200" required> <select name="attendeeCount" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Number of Attendees</option><option>1</option><option>2</option></select> <select name="lunchBoxCount" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Lunch Box Reservation</option><option>1</option><option>2</option></select>
      <div class="price-summary rounded-xl border border-[#d4af37]/40 bg-[#fefdf8] p-4">
       <div class="flex justify-between gap-4 text-sm"><span class="text-slate-500">Ticket Price</span><span data-price-label class="font-semibold text-[#1a2744]">-</span></div>
       <div class="flex justify-between gap-4 text-sm mt-2"><span class="text-slate-500">Quantity</span><span data-quantity-label class="font-semibold text-[#1a2744]">-</span></div>
@@ -90,6 +92,16 @@
        <p class="text-xs text-gray-400 mt-1">JPG, PNG or PDF</p><input name="paymentProof" type="file" class="hidden" accept="image/*,.pdf" onchange="generateSeatNumber('flow-b')">
       </div>
      </div><button data-template-id="submit-btn-b" type="submit" class="canva-button w-full py-4 rounded-full font-semibold text-lg transition-all hover:scale-[1.02]"></button>
+     </div>
+     <div id="flow-b-contact" class="hidden">
+      <div class="canva-card card-shadow rounded-2xl p-10 text-center">
+       <i data-lucide="info" class="w-12 h-12 mx-auto text-[#b8860b] mb-4"></i>
+       <p class="canva-text text-lg leading-relaxed">Please contact our admission team to continue your waiting list process.</p>
+       <div class="flex flex-col sm:flex-row gap-4 mt-8 justify-center">
+        <a class="canva-button inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full font-medium transition hover:scale-105" href="https://wa.me/6285186664140" target="_blank" rel="noopener noreferrer"><i data-lucide="message-circle" class="w-5 h-5"></i>WhatsApp Admission</a> <a class="canva-button inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full font-medium border-2 transition hover:scale-105" href="#" target="_blank" rel="noopener noreferrer"><i data-lucide="phone" class="w-5 h-5"></i>Contact School</a>
+       </div>
+      </div>
+     </div>
     </form><!-- Flow C -->
     <div id="flow-c" class="hidden mt-8">
      <div data-template-id="exclusive-card" class="canva-card card-shadow rounded-2xl p-10 text-center">

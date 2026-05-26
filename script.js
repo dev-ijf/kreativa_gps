@@ -81,6 +81,8 @@ function handleParentTypeChange(event) {
   if (selectedFlow) {
     document.getElementById(selectedFlow).classList.remove('hidden');
   }
+
+  updateWaitingListStatusFlow();
 }
 
 function formatCurrency(value) {
@@ -154,6 +156,44 @@ function setupAttendanceLunchSync() {
 
     updatePriceSummary(form);
   });
+}
+
+function updateWaitingListStatusFlow() {
+  const form = document.getElementById('flow-b');
+  const statusSelect = form?.querySelector('[name="waitingListStatus"]');
+  const registrationFields = document.getElementById('flow-b-registration-fields');
+  const contactCard = document.getElementById('flow-b-contact');
+
+  if (!statusSelect || !registrationFields || !contactCard) {
+    return;
+  }
+
+  const shouldContactAdmin = statusSelect.value === 'not_yet';
+  registrationFields.classList.toggle('hidden', shouldContactAdmin);
+  contactCard.classList.toggle('hidden', !shouldContactAdmin);
+
+  registrationFields.querySelectorAll('input, select, textarea, button').forEach(element => {
+    element.disabled = shouldContactAdmin;
+  });
+
+  if (shouldContactAdmin) {
+    generatedSeatNumber = '';
+  }
+
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
+}
+
+function setupWaitingListStatus() {
+  const statusSelect = document.querySelector('#flow-b [name="waitingListStatus"]');
+
+  if (!statusSelect) {
+    return;
+  }
+
+  statusSelect.addEventListener('change', updateWaitingListStatusFlow);
+  updateWaitingListStatusFlow();
 }
 
 function generateSeatNumber() {
@@ -399,6 +439,7 @@ function initPage() {
   fillTemplateContent();
   document.getElementById('parent-type').addEventListener('change', handleParentTypeChange);
   setupAttendanceLunchSync();
+  setupWaitingListStatus();
   setupUploadZones();
   loadConfig();
 
