@@ -21,7 +21,6 @@ const templateContent = {
   'upload-label-b': 'Upload payment proof',
   'submit-btn': 'Submit Registration',
   'submit-btn-b': 'Submit Registration',
-  'exclusive-text': 'This summit is currently reserved for registered and waiting-list parents. Please contact our admission team for further information.',
   'wa-btn': 'WhatsApp Admission',
   'contact-btn': 'Contact School',
   'confirm-title': 'Registration Confirmed',
