@@ -151,7 +151,7 @@ function renderRows(rows) {
         <div class="font-medium">${escapeHtml(row.studentName)}</div>
         <div class="text-slate-500">${escapeHtml(row.studentLevel)}</div>
         <div class="text-slate-500">${escapeHtml(row.attendeeCount)} attendee(s), ${escapeHtml(row.lunchBoxCount)} lunch</div>
-        <div class="text-[#b8860b] font-semibold mt-1">${formatCurrency(row.totalAmount)}</div>
+        <div class="text-[#ED3A5F] font-semibold mt-1">${formatCurrency(row.totalAmount)}</div>
       </td>
       <td class="px-4 py-4">
         <div class="font-medium">${escapeHtml(row.parentName)}</div>

@@ -447,7 +447,7 @@ function downloadTicket() {
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, 600, 800);
 
-  ctx.fillStyle = '#b8860b';
+  ctx.fillStyle = '#ED3A5F';
   ctx.fillRect(0, 0, 600, 100);
 
   ctx.fillStyle = '#ffffff';
@@ -481,7 +481,7 @@ function downloadTicket() {
 
   ctx.fillStyle = '#f0f0f0';
   ctx.fillRect(175, 425, 250, 250);
-  ctx.fillStyle = '#b8860b';
+  ctx.fillStyle = '#ED3A5F';
   ctx.font = '14px Poppins, sans-serif';
   ctx.fillText('[QR Code]', 300, 550);
 

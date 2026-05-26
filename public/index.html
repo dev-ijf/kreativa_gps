@@ -21,11 +21,11 @@
     <p data-template-id="hero-subtitle" class="canva-text mt-4 text-lg md:text-xl"></p>
     <div data-template-id="event-card" class="canva-card card-shadow rounded-2xl max-w-md mx-auto mt-12 p-8">
      <div class="space-y-3 text-left">
-      <div class="flex items-center gap-3"><i data-lucide="calendar" class="w-5 h-5 text-[#b8860b]"></i><span data-template-id="event-date" class="canva-text"></span>
+      <div class="flex items-center gap-3"><i data-lucide="calendar" class="w-5 h-5 text-[#ED3A5F]"></i><span data-template-id="event-date" class="canva-text"></span>
       </div>
-      <div class="flex items-center gap-3"><i data-lucide="clock" class="w-5 h-5 text-[#b8860b]"></i><span data-template-id="event-time" class="canva-text"></span>
+      <div class="flex items-center gap-3"><i data-lucide="clock" class="w-5 h-5 text-[#ED3A5F]"></i><span data-template-id="event-time" class="canva-text"></span>
       </div>
-      <div class="flex items-center gap-3"><i data-lucide="map-pin" class="w-5 h-5 text-[#b8860b]"></i><span data-template-id="event-venue" class="canva-text"></span>
+      <div class="flex items-center gap-3"><i data-lucide="map-pin" class="w-5 h-5 text-[#ED3A5F]"></i><span data-template-id="event-venue" class="canva-text"></span>
       </div>
      </div>
     </div><button data-template-id="hero-cta" class="canva-button mt-10 px-10 py-4 rounded-full text-lg font-semibold transition-all hover:scale-105" onclick="document.getElementById('registration').scrollIntoView({behavior:'smooth'})"></button>
@@ -47,14 +47,14 @@
     <h2 data-template-id="reg-title" class="canva-text font-display text-center"></h2>
     <p data-template-id="reg-subtitle" class="canva-text text-center mt-3"></p>
     <div class="mt-10">
-     <label data-template-id="reg-type-label" class="canva-text block mb-2 font-medium" for="parent-type"></label> <select id="parent-type" class="w-full p-4 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#b8860b]/30 text-base"> <option value="">- Select -</option> <option value="existing">Existing Parent 2026/2027</option> <option value="waitlist">Waiting List Parent 2027/2028</option> <option value="new">My Child Has Not Registered Yet</option> </select>
+     <label data-template-id="reg-type-label" class="canva-text block mb-2 font-medium" for="parent-type"></label> <select id="parent-type" class="w-full p-4 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#ED3A5F]/30 text-base"> <option value="">- Select -</option> <option value="existing">Existing Parent 2026/2027</option> <option value="waitlist">Waiting List Parent 2027/2028</option> <option value="new">My Child Has Not Registered Yet</option> </select>
     </div><!-- Flow A -->
     <form id="flow-a" class="hidden mt-8 space-y-5" onsubmit="showConfirmation(event)">
      <select name="studentLevel" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Student Grade</option><option>Kindergarten 1</option><option>Kindergarten 2</option><option>Grade 1</option><option>Grade 2</option><option>Grade 3</option><option>Secondary 1</option><option>High School 1</option></select> <input name="studentName" type="text" placeholder="Student Name" class="w-full p-4 rounded-xl border border-gray-200" required> <input name="parentName" type="text" placeholder="Parent Name" class="w-full p-4 rounded-xl border border-gray-200" required> <input name="phone" type="tel" placeholder="Phone Number" class="w-full p-4 rounded-xl border border-gray-200" required> <input name="email" type="email" placeholder="Email Address" class="w-full p-4 rounded-xl border border-gray-200" required> <select name="attendeeCount" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Number of Attendees</option><option>1</option><option>2</option></select> <select name="lunchBoxCount" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Lunch Box Reservation</option><option>1</option><option>2</option></select>
-     <div class="price-summary rounded-xl border border-[#d4af37]/40 bg-[#fefdf8] p-4">
+     <div class="price-summary rounded-xl border border-[#ED3A5F]/40 bg-[#fefdf8] p-4">
       <div class="flex justify-between gap-4 text-sm"><span class="text-slate-500">Ticket Price</span><span data-price-label class="font-semibold text-[#1a2744]">-</span></div>
       <div class="flex justify-between gap-4 text-sm mt-2"><span class="text-slate-500">Quantity</span><span data-quantity-label class="font-semibold text-[#1a2744]">-</span></div>
-      <div class="flex justify-between gap-4 border-t border-[#d4af37]/30 mt-3 pt-3"><span class="font-semibold text-[#1a2744]">Total Payment</span><span data-total-label class="font-bold text-[#b8860b]">-</span></div>
+      <div class="flex justify-between gap-4 border-t border-[#ED3A5F]/30 mt-3 pt-3"><span class="font-semibold text-[#1a2744]">Total Payment</span><span data-total-label class="font-bold text-[#ED3A5F]">-</span></div>
      </div>
      <div id="payment-a" class="rounded-2xl border border-gray-100 p-6 card-shadow">
       <h3 data-template-id="payment-title" class="canva-text font-semibold mb-4"></h3>
@@ -64,7 +64,7 @@
        <p data-template-id="qris-name" class="canva-text mt-3 font-medium"></p>
       </div>
       <div class="upload-zone rounded-xl mt-6 p-8 text-center cursor-pointer" onclick="this.querySelector('input').click()">
-       <i data-lucide="upload-cloud" class="w-10 h-10 mx-auto text-[#b8860b] mb-2"></i>
+       <i data-lucide="upload-cloud" class="w-10 h-10 mx-auto text-[#ED3A5F] mb-2"></i>
        <p data-template-id="upload-label" class="canva-text"></p>
        <p class="text-xs text-gray-400 mt-1">JPG, PNG or PDF</p><input name="paymentProof" type="file" class="hidden" accept="image/*,.pdf" onchange="generateSeatNumber('flow-a')">
       </div>
@@ -74,10 +74,10 @@
      <select name="waitingListStatus" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Waiting List Status</option><option value="paid_commitment_fee">Already Paid Commitment Fee Rp 5.000.000</option><option value="not_yet">Not Yet</option></select>
      <div id="flow-b-registration-fields" class="space-y-5">
       <select name="studentLevel" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Student Level Applying For</option><option>Kindergarten 1</option><option>Kindergarten 2</option><option>Grade 1</option><option>Grade 2</option><option>Grade 3</option><option>Secondary 1</option><option>High School 1</option></select> <input name="studentName" type="text" placeholder="Student Name" class="w-full p-4 rounded-xl border border-gray-200" required> <input name="parentName" type="text" placeholder="Parent Name" class="w-full p-4 rounded-xl border border-gray-200" required> <input name="phone" type="tel" placeholder="Phone Number" class="w-full p-4 rounded-xl border border-gray-200" required> <input name="email" type="email" placeholder="Email Address" class="w-full p-4 rounded-xl border border-gray-200" required> <select name="attendeeCount" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Number of Attendees</option><option>1</option><option>2</option></select> <select name="lunchBoxCount" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Lunch Box Reservation</option><option>1</option><option>2</option></select>
-     <div class="price-summary rounded-xl border border-[#d4af37]/40 bg-[#fefdf8] p-4">
+     <div class="price-summary rounded-xl border border-[#ED3A5F]/40 bg-[#fefdf8] p-4">
       <div class="flex justify-between gap-4 text-sm"><span class="text-slate-500">Ticket Price</span><span data-price-label class="font-semibold text-[#1a2744]">-</span></div>
       <div class="flex justify-between gap-4 text-sm mt-2"><span class="text-slate-500">Quantity</span><span data-quantity-label class="font-semibold text-[#1a2744]">-</span></div>
-      <div class="flex justify-between gap-4 border-t border-[#d4af37]/30 mt-3 pt-3"><span class="font-semibold text-[#1a2744]">Total Payment</span><span data-total-label class="font-bold text-[#b8860b]">-</span></div>
+      <div class="flex justify-between gap-4 border-t border-[#ED3A5F]/30 mt-3 pt-3"><span class="font-semibold text-[#1a2744]">Total Payment</span><span data-total-label class="font-bold text-[#ED3A5F]">-</span></div>
      </div>
      <div id="payment-b" class="rounded-2xl border border-gray-100 p-6 card-shadow">
       <h3 data-template-id="payment-title-b" class="canva-text font-semibold mb-4"></h3>
@@ -87,7 +87,7 @@
        <p data-template-id="qris-name-b" class="canva-text mt-3 font-medium"></p>
       </div>
       <div class="upload-zone rounded-xl mt-6 p-8 text-center cursor-pointer" onclick="this.querySelector('input').click()">
-       <i data-lucide="upload-cloud" class="w-10 h-10 mx-auto text-[#b8860b] mb-2"></i>
+       <i data-lucide="upload-cloud" class="w-10 h-10 mx-auto text-[#ED3A5F] mb-2"></i>
        <p data-template-id="upload-label-b" class="canva-text"></p>
        <p class="text-xs text-gray-400 mt-1">JPG, PNG or PDF</p><input name="paymentProof" type="file" class="hidden" accept="image/*,.pdf" onchange="generateSeatNumber('flow-b')">
       </div>
@@ -95,13 +95,13 @@
      </div>
      <div id="flow-b-contact" class="hidden">
       <div class="canva-card card-shadow rounded-2xl p-10 text-center">
-       <i data-lucide="info" class="w-12 h-12 mx-auto text-[#b8860b] mb-4"></i>
+       <i data-lucide="info" class="w-12 h-12 mx-auto text-[#ED3A5F] mb-4"></i>
        <h3 class="canva-text text-2xl font-semibold text-[#1a2744]">Thank You for Your Interest</h3>
        <p class="canva-text text-lg leading-relaxed mt-4">Please contact our admission team for a special invitation request if seats are still available.</p>
        <p class="canva-text text-lg leading-relaxed mt-4">Global Parenting Summit 2026 is currently exclusive for:</p>
        <ul class="mt-4 space-y-2 text-left text-[#1a2744] max-w-md mx-auto">
-        <li class="flex gap-3"><span class="text-[#b8860b] font-bold">&bull;</span><span>Existing Parents of Academic Year 2026/2027</span></li>
-        <li class="flex gap-3"><span class="text-[#b8860b] font-bold">&bull;</span><span>Families who have secured the 2027/2028 waiting list commitment</span></li>
+        <li class="flex gap-3"><span class="text-[#ED3A5F] font-bold">&bull;</span><span>Existing Parents of Academic Year 2026/2027</span></li>
+        <li class="flex gap-3"><span class="text-[#ED3A5F] font-bold">&bull;</span><span>Families who have secured the 2027/2028 waiting list commitment</span></li>
        </ul>
        <div class="flex flex-col sm:flex-row gap-4 mt-8 justify-center">
         <a class="canva-button inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full font-medium transition hover:scale-105" href="https://wa.me/6285186664140" target="_blank" rel="noopener noreferrer"><i data-lucide="message-circle" class="w-5 h-5"></i>Whatsapp</a>
@@ -111,13 +111,13 @@
     </form><!-- Flow C -->
     <div id="flow-c" class="hidden mt-8">
      <div data-template-id="exclusive-card" class="canva-card card-shadow rounded-2xl p-10 text-center">
-      <i data-lucide="info" class="w-12 h-12 mx-auto text-[#b8860b] mb-4"></i>
+      <i data-lucide="info" class="w-12 h-12 mx-auto text-[#ED3A5F] mb-4"></i>
       <h3 class="canva-text text-2xl font-semibold text-[#1a2744]">Thank You for Your Interest</h3>
       <p class="canva-text text-lg leading-relaxed mt-4">Please contact our admission team for a special invitation request if seats are still available.</p>
       <p class="canva-text text-lg leading-relaxed mt-4">Global Parenting Summit 2026 is currently exclusive for:</p>
       <ul class="mt-4 space-y-2 text-left text-[#1a2744] max-w-md mx-auto">
-       <li class="flex gap-3"><span class="text-[#b8860b] font-bold">&bull;</span><span>Existing Parents of Academic Year 2026/2027</span></li>
-       <li class="flex gap-3"><span class="text-[#b8860b] font-bold">&bull;</span><span>Families who have secured the 2027/2028 waiting list commitment</span></li>
+       <li class="flex gap-3"><span class="text-[#ED3A5F] font-bold">&bull;</span><span>Existing Parents of Academic Year 2026/2027</span></li>
+       <li class="flex gap-3"><span class="text-[#ED3A5F] font-bold">&bull;</span><span>Families who have secured the 2027/2028 waiting list commitment</span></li>
       </ul>
       <div class="flex flex-col sm:flex-row gap-4 mt-8 justify-center">
        <a data-template-id="wa-btn" class="canva-button inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full font-medium transition hover:scale-105" href="https://wa.me/6285186664140" target="_blank" rel="noopener noreferrer"><i data-lucide="message-circle" class="w-5 h-5"></i></a>
@@ -150,7 +150,7 @@
      <p class="text-xs text-gray-500 mt-2">Attendance QR Code</p>
     </div>
     <div class="flex gap-4 mt-8 justify-center">
-     <button class="px-8 py-3 bg-[#b8860b] text-white rounded-full font-medium hover:scale-105 transition flex items-center gap-2" onclick="downloadTicket()"><i data-lucide="download" class="w-5 h-5"></i>Download Ticket</button> <button class="px-8 py-3 bg-[#1a2744] text-white rounded-full font-medium hover:scale-105 transition" onclick="document.getElementById('confirmation').classList.add('hidden')">Done</button>
+     <button class="px-8 py-3 bg-[#ED3A5F] text-white rounded-full font-medium hover:scale-105 transition flex items-center gap-2" onclick="downloadTicket()"><i data-lucide="download" class="w-5 h-5"></i>Download Ticket</button> <button class="px-8 py-3 bg-[#1a2744] text-white rounded-full font-medium hover:scale-105 transition" onclick="document.getElementById('confirmation').classList.add('hidden')">Done</button>
     </div>
    </div>
   </div><!-- Footer -->

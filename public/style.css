@@ -19,13 +19,13 @@ body {
 /* Extracted from gps.html */
 body { font-family: 'Poppins', sans-serif; }
 .font-display { font-family: 'Poppins', sans-serif; }
-.gold-accent { color: #b8860b; }
-.bg-gold { background-color: #b8860b; }
+.gold-accent { color: #ED3A5F; }
+.bg-gold { background-color: #ED3A5F; }
 .navy-accent { color: #1a2744; }
 .bg-navy { background-color: #1a2744; }
 .card-shadow { box-shadow: 0 4px 40px rgba(26,39,68,0.08); }
-.upload-zone { border: 2px dashed #d4af37; transition: all 0.3s; }
-.upload-zone:hover, .upload-zone.dragover { border-color: #b8860b; background: #fefdf8; }
+.upload-zone { border: 2px dashed #ED3A5F; transition: all 0.3s; }
+.upload-zone:hover, .upload-zone.dragover { border-color: #ED3A5F; background: #fefdf8; }
 section { scroll-margin-top: 2rem; }
 
 header {
@@ -73,7 +73,7 @@ header .canva-image {
 }
 
 .canva-button {
-  background: #b8860b;
+  background: #ED3A5F;
   color: #fff;
   box-shadow: 0 14px 30px rgba(184, 134, 11, 0.24);
 }
@@ -150,7 +150,7 @@ button:disabled {
 .upload-preview-file {
   display: grid;
   place-items: center;
-  color: #b8860b;
+  color: #ED3A5F;
   font-weight: 700;
 }
 
@@ -185,13 +185,13 @@ button:disabled {
   justify-content: center;
   border-radius: 999px;
   background: #fefdf8;
-  color: #b8860b;
+  color: #ED3A5F;
   border: 1px solid rgba(184, 134, 11, 0.24);
   transition: all 0.2s;
 }
 
 .payment-proof-action:hover {
-  background: #b8860b;
+  background: #ED3A5F;
   color: #fff;
 }
 
