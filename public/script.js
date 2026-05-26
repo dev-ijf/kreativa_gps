@@ -40,8 +40,7 @@ let generatedSeatNumber = '';
 let currentRegistration = null;
 const appConfig = {
   ticketPrice: 0,
-  ticketQuota: 800,
-  remainingSeats: 800
+  ticketQuota: 800
 };
 
 function fillTemplateContent() {
@@ -102,23 +101,10 @@ async function loadConfig() {
     const config = await response.json();
     appConfig.ticketPrice = Number(config.ticketPrice || 0);
     appConfig.ticketQuota = Number(config.ticketQuota || 800);
-    appConfig.remainingSeats = Number(config.remainingSeats || 0);
-    updateQuotaSummary();
     updateAllPriceSummaries();
   } catch {
-    updateQuotaSummary();
     updateAllPriceSummaries();
   }
-}
-
-function updateQuotaSummary() {
-  const quotaDisplay = document.getElementById('quota-display');
-
-  if (!quotaDisplay) {
-    return;
-  }
-
-  quotaDisplay.textContent = `${appConfig.remainingSeats} / ${appConfig.ticketQuota}`;
 }
 
 function updatePriceSummary(form) {
