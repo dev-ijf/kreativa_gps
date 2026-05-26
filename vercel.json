@@ -7,11 +7,14 @@
       "includeFiles": "dist/**"
     }
   },
-  "rewrites": [
+  "redirects": [
     {
       "source": "/",
-      "destination": "/index.html"
-    },
+      "destination": "/index.html",
+      "permanent": false
+    }
+  ],
+  "rewrites": [
     {
       "source": "/index.html",
       "destination": "/index.html"
