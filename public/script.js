@@ -33,7 +33,7 @@ const templateContent = {
 
 const imageSources = {
   'hero-img': 'assets/bg-1.jpeg',
-  'about-img': 'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=1200&q=80'
+  'about-img': 'assets/desc1.jpeg'
 };
 
 let generatedSeatNumber = '';
