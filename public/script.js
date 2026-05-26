@@ -42,6 +42,9 @@ const appConfig = {
   ticketPrice: 0,
   ticketQuota: 800
 };
+const maxDirectUploadBytes = 2_000_000;
+const maxPaymentProofDataUrlLength = 2_800_000;
+const maxPaymentProofImageDimension = 1400;
 
 function fillTemplateContent() {
   Object.entries(templateContent).forEach(([id, value]) => {
@@ -260,15 +263,109 @@ function readFileAsDataUrl(file) {
   });
 }
 
+function isImagePaymentProof(file) {
+  return file.type.startsWith('image/') || /\.(jpe?g|png|webp)$/i.test(file.name);
+}
+
+function replaceFileExtension(filename, extension) {
+  const baseName = String(filename || 'payment-proof').replace(/\.[^.]+$/, '');
+  return `${baseName}${extension}`;
+}
+
+function loadImageFromDataUrl(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('Unable to process this image. Please use JPG or PNG.'));
+    image.src = dataUrl;
+  });
+}
+
+async function compressImagePaymentProof(file) {
+  const originalDataUrl = await readFileAsDataUrl(file);
+  const image = await loadImageFromDataUrl(originalDataUrl);
+  const scale = Math.min(
+    1,
+    maxPaymentProofImageDimension / image.naturalWidth,
+    maxPaymentProofImageDimension / image.naturalHeight
+  );
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+  canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+
+  const context = canvas.getContext('2d');
+  context.fillStyle = '#ffffff';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+  const qualities = [0.78, 0.66, 0.54];
+  let compressedDataUrl = '';
+
+  for (const quality of qualities) {
+    compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+    if (compressedDataUrl.length <= maxPaymentProofDataUrlLength) {
+      break;
+    }
+  }
+
+  if (compressedDataUrl.length > maxPaymentProofDataUrlLength) {
+    throw new Error('Payment proof image is too large. Please upload a smaller screenshot or photo.');
+  }
+
+  return {
+    filename: replaceFileExtension(file.name, '.jpg'),
+    mimeType: 'image/jpeg',
+    dataUrl: compressedDataUrl
+  };
+}
+
+async function preparePaymentProof(file) {
+  if (!file || !file.name) {
+    return {
+      filename: '',
+      mimeType: '',
+      dataUrl: ''
+    };
+  }
+
+  if (isImagePaymentProof(file)) {
+    return compressImagePaymentProof(file);
+  }
+
+  if (file.size > maxDirectUploadBytes) {
+    throw new Error('PDF payment proof is too large. Maximum PDF size is 2 MB.');
+  }
+
+  const dataUrl = await readFileAsDataUrl(file);
+  if (dataUrl.length > maxPaymentProofDataUrlLength) {
+    throw new Error('Payment proof file is too large. Please upload a smaller file.');
+  }
+
+  return {
+    filename: file.name,
+    mimeType: file.type,
+    dataUrl
+  };
+}
+
+function getFriendlyErrorMessage(error) {
+  const message = String(error?.message || error || 'Registration failed.');
+
+  if (message.includes('expected pattern')) {
+    return 'Upload failed because the payment proof file is too large for this browser. Please upload a smaller image.';
+  }
+
+  return message;
+}
+
 async function buildRegistrationPayload(form) {
   const formData = new FormData(form);
   const paymentProof = formData.get('paymentProof');
   const attendeeCount = String(formData.get('attendeeCount') || '1');
   const hasPaymentProof = paymentProof && paymentProof.name;
-
-  if (hasPaymentProof && paymentProof.size > 5_000_000) {
-    throw new Error('Payment proof file is too large. Maximum size is 5 MB.');
-  }
+  const preparedPaymentProof = hasPaymentProof
+    ? await preparePaymentProof(paymentProof)
+    : { filename: '', mimeType: '', dataUrl: '' };
 
   const payload = {
     category: getSelectedCategory(),
@@ -280,14 +377,10 @@ async function buildRegistrationPayload(form) {
     email: String(formData.get('email') || ''),
     attendeeCount,
     lunchBoxCount: attendeeCount,
-    paymentProofFilename: hasPaymentProof ? paymentProof.name : '',
-    paymentProofMimeType: hasPaymentProof ? paymentProof.type : '',
-    paymentProofData: ''
+    paymentProofFilename: preparedPaymentProof.filename,
+    paymentProofMimeType: preparedPaymentProof.mimeType,
+    paymentProofData: preparedPaymentProof.dataUrl
   };
-
-  if (hasPaymentProof) {
-    payload.paymentProofData = await readFileAsDataUrl(paymentProof);
-  }
 
   return payload;
 }
@@ -340,7 +433,7 @@ async function showConfirmation(event) {
     document.getElementById('confirmation').classList.remove('hidden');
     loadConfig();
   } catch (error) {
-    alert(error.message);
+    alert(getFriendlyErrorMessage(error));
   } finally {
     submitButton.disabled = false;
     submitButton.textContent = originalLabel;
