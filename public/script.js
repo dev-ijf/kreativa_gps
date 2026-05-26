@@ -504,18 +504,12 @@ function downloadTicket() {
   ctx.fillText('Time: 08:00 - 12:00 WIB', 300, 360);
   ctx.fillText('Venue: Kreativa Global School Auditorium', 300, 390);
 
-  ctx.fillStyle = '#f0f0f0';
-  ctx.fillRect(175, 425, 250, 250);
-  ctx.fillStyle = '#ED3A5F';
-  ctx.font = '14px Poppins, sans-serif';
-  ctx.fillText('[QR Code]', 300, 550);
-
   ctx.fillStyle = '#1a2744';
   ctx.font = 'bold 16px Poppins, sans-serif';
-  ctx.fillText('Kreativa Global School', 300, 730);
+  ctx.fillText('Kreativa Global School', 300, 520);
   ctx.fillStyle = '#94a3b8';
   ctx.font = '12px Poppins, sans-serif';
-  ctx.fillText('info@kreativaglobal.sch.id', 300, 760);
+  ctx.fillText('info@kreativaglobal.sch.id', 300, 550);
 
   const link = document.createElement('a');
   link.href = canvas.toDataURL('image/png');
