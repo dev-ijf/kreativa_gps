@@ -209,6 +209,42 @@ async function storePaymentProof(payload, registrationId) {
   return storedFilename;
 }
 
+function parsePaymentProofForDatabase(payload, registrationId) {
+  const originalFilename = normalizeText(payload.paymentProofFilename);
+  const mimeType = normalizeText(payload.paymentProofMimeType);
+  const rawData = normalizeText(payload.paymentProofData);
+
+  if (!originalFilename || !rawData) {
+    return {
+      filename: originalFilename,
+      mimeType: '',
+      base64Data: ''
+    };
+  }
+
+  const extension = getUploadExtension(originalFilename, mimeType);
+  if (!extension) {
+    throw new Error('Payment proof must be JPG, PNG, WEBP, or PDF.');
+  }
+
+  const base64Data = rawData.includes(',')
+    ? rawData.split(',').pop()
+    : rawData;
+  const fileBuffer = Buffer.from(base64Data, 'base64');
+
+  if (!fileBuffer.length || fileBuffer.length > 5_000_000) {
+    throw new Error('Payment proof file is too large. Maximum size is 5 MB.');
+  }
+
+  const safeOriginal = sanitizeFilename(originalFilename.replace(/\.[^.]+$/, 'proof'));
+
+  return {
+    filename: `${registrationId}-${Date.now()}-${safeOriginal}${extension}`,
+    mimeType: contentTypes[extension] || mimeType || 'application/octet-stream',
+    base64Data
+  };
+}
+
 async function deleteStoredPaymentProof(filename) {
   const safeFilename = path.basename(normalizeText(filename));
 
@@ -590,7 +626,7 @@ async function createPostgresRepository() {
         attendeeCount,
         existingSeatResult.rows.map(row => ({ seatNumber: row.seat_number }))
       );
-      const storedPaymentProofFilename = await storePaymentProof(payload, registrationId);
+      const proof = parsePaymentProofForDatabase(payload, registrationId);
 
       const values = [
         registrationId,
@@ -604,7 +640,9 @@ async function createPostgresRepository() {
         attendeeCount,
         lunchBoxCount,
         seats,
-        storedPaymentProofFilename,
+        proof.filename,
+        proof.mimeType,
+        proof.base64Data,
         ticketPrice,
         attendeeCount * ticketPrice
       ];
@@ -623,10 +661,13 @@ async function createPostgresRepository() {
           lunch_box_count,
           seat_number,
           payment_proof_filename,
+          payment_proof_mime_type,
+          payment_proof_data,
           ticket_price,
           total_amount
         ) VALUES (
-          $1, $2, NULLIF($3, ''), $4, $5, $6, $7, $8, $9, $10, $11, NULLIF($12, ''), $13, $14
+          $1, $2, NULLIF($3, ''), $4, $5, $6, $7, $8, $9, $10, $11,
+          NULLIF($12, ''), NULLIF($13, ''), NULLIF($14, ''), $15, $16
         )
         RETURNING *`,
         values
@@ -676,15 +717,32 @@ async function createPostgresRepository() {
     },
 
     async delete(id) {
-      const current = await this.get(id);
       const result = await pool.query(
         `DELETE FROM registrations WHERE id::text = $1 OR registration_id = $1`,
         [id]
       );
-      if (result.rowCount > 0) {
-        await deleteStoredPaymentProof(current?.paymentProofFilename);
-      }
       return result.rowCount > 0;
+    },
+
+    async getPaymentProof(filename) {
+      const result = await pool.query(
+        `SELECT payment_proof_filename, payment_proof_mime_type, payment_proof_data
+         FROM registrations
+         WHERE payment_proof_filename = $1
+         LIMIT 1`,
+        [filename]
+      );
+      const proof = result.rows[0];
+
+      if (!proof?.payment_proof_data) {
+        return null;
+      }
+
+      return {
+        filename: proof.payment_proof_filename,
+        mimeType: proof.payment_proof_mime_type || 'application/octet-stream',
+        buffer: Buffer.from(proof.payment_proof_data, 'base64')
+      };
     }
   };
 }
@@ -727,6 +785,24 @@ async function handleApi(request, response, url) {
   const proofMatch = route.match(/^\/api\/payment-proofs\/([^/]+)$/);
   if (proofMatch && request.method === 'GET') {
     const filename = path.basename(decodeURIComponent(proofMatch[1]));
+
+    if (usePostgres && repository.getPaymentProof) {
+      const proof = await repository.getPaymentProof(filename);
+
+      if (!proof) {
+        sendJson(response, 404, { error: 'Payment proof not found.' });
+        return;
+      }
+
+      response.writeHead(200, {
+        'Content-Type': proof.mimeType,
+        'Cache-Control': 'private, max-age=300',
+        'Content-Disposition': `inline; filename="${proof.filename}"`
+      });
+      response.end(proof.buffer);
+      return;
+    }
+
     const proofPath = path.join(paymentProofDir, filename);
 
     try {
