@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Global Parenting Summit 2026</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+ </head>
+ <body data-template-id="__page-root" class="w-full min-h-screen">
+  <!-- Hero -->
+  <header class="relative overflow-hidden">
+   <div class="absolute inset-0 opacity-20">
+    <img data-template-id="hero-img" class="canva-image w-full h-full object-cover" alt="" loading="lazy">
+   </div>
+   <div class="relative z-10 max-w-5xl mx-auto px-6 py-24 md:py-36 text-center">
+    <p data-template-id="hero-eyebrow" class="canva-text uppercase tracking-[0.3em] text-sm mb-4"></p>
+    <h1 data-template-id="hero-title" class="canva-text font-display"></h1>
+    <p data-template-id="hero-subtitle" class="canva-text mt-4 text-lg md:text-xl"></p>
+    <div data-template-id="event-card" class="canva-card card-shadow rounded-2xl max-w-md mx-auto mt-12 p-8">
+     <div class="space-y-3 text-left">
+      <div class="flex items-center gap-3"><i data-lucide="calendar" class="w-5 h-5 text-[#b8860b]"></i><span data-template-id="event-date" class="canva-text"></span>
+      </div>
+      <div class="flex items-center gap-3"><i data-lucide="clock" class="w-5 h-5 text-[#b8860b]"></i><span data-template-id="event-time" class="canva-text"></span>
+      </div>
+      <div class="flex items-center gap-3"><i data-lucide="map-pin" class="w-5 h-5 text-[#b8860b]"></i><span data-template-id="event-venue" class="canva-text"></span>
+      </div>
+     </div>
+    </div><button data-template-id="hero-cta" class="canva-button mt-10 px-10 py-4 rounded-full text-lg font-semibold transition-all hover:scale-105" onclick="document.getElementById('registration').scrollIntoView({behavior:'smooth'})"></button>
+   </div>
+  </header><!-- About -->
+  <section class="max-w-5xl mx-auto px-6 py-20 md:py-28">
+   <div class="grid md:grid-cols-2 gap-12 items-center">
+    <div>
+     <h2 data-template-id="about-title" class="canva-text font-display"></h2>
+     <p data-template-id="about-desc" class="canva-text mt-6 leading-relaxed"></p>
+    </div>
+    <div class="rounded-2xl overflow-hidden card-shadow">
+     <img data-template-id="about-img" class="canva-image w-full h-80 object-cover" alt="" loading="lazy">
+    </div>
+   </div>
+  </section><!-- Registration -->
+  <section id="registration" class="py-20 md:py-28">
+   <div class="max-w-2xl mx-auto px-6">
+    <h2 data-template-id="reg-title" class="canva-text font-display text-center"></h2>
+    <p data-template-id="reg-subtitle" class="canva-text text-center mt-3"></p>
+    <div id="quota-summary" class="mt-6 rounded-xl border border-[#d4af37]/40 bg-[#fefdf8] px-5 py-4 text-center text-[#1a2744]">
+     <span class="text-slate-500">Remaining Tickets</span>
+     <strong id="quota-display" class="ml-2 text-[#b8860b]">-</strong>
+    </div>
+    <div class="mt-10">
+     <label data-template-id="reg-type-label" class="canva-text block mb-2 font-medium" for="parent-type"></label> <select id="parent-type" class="w-full p-4 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#b8860b]/30 text-base"> <option value="">- Select -</option> <option value="existing">Existing Parent 2026/2027</option> <option value="waitlist">Waiting List Parent 2027/2028</option> <option value="new">My Child Has Not Registered Yet</option> </select>
+    </div><!-- Flow A -->
+    <form id="flow-a" class="hidden mt-8 space-y-5" onsubmit="showConfirmation(event)">
+     <select name="studentLevel" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Student Grade</option><option>Grade 1</option><option>Grade 2</option><option>Grade 3</option><option>Grade 4</option><option>Grade 5</option><option>Grade 6</option></select> <input name="studentName" type="text" placeholder="Student Name" class="w-full p-4 rounded-xl border border-gray-200" required> <input name="parentName" type="text" placeholder="Parent Name" class="w-full p-4 rounded-xl border border-gray-200" required> <input name="phone" type="tel" placeholder="Phone Number" class="w-full p-4 rounded-xl border border-gray-200" required> <input name="email" type="email" placeholder="Email Address" class="w-full p-4 rounded-xl border border-gray-200" required> <select name="attendeeCount" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Number of Attendees</option><option>1</option><option>2</option></select> <select name="lunchBoxCount" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Lunch Box Reservation</option><option>1</option><option>2</option></select>
+     <div class="price-summary rounded-xl border border-[#d4af37]/40 bg-[#fefdf8] p-4">
+      <div class="flex justify-between gap-4 text-sm"><span class="text-slate-500">Ticket Price</span><span data-price-label class="font-semibold text-[#1a2744]">-</span></div>
+      <div class="flex justify-between gap-4 text-sm mt-2"><span class="text-slate-500">Quantity</span><span data-quantity-label class="font-semibold text-[#1a2744]">-</span></div>
+      <div class="flex justify-between gap-4 border-t border-[#d4af37]/30 mt-3 pt-3"><span class="font-semibold text-[#1a2744]">Total Payment</span><span data-total-label class="font-bold text-[#b8860b]">-</span></div>
+     </div>
+     <div id="payment-a" class="rounded-2xl border border-gray-100 p-6 card-shadow">
+      <h3 data-template-id="payment-title" class="canva-text font-semibold mb-4"></h3>
+      <div data-template-id="qris-card" class="canva-card rounded-xl p-6 text-center">
+       <p data-template-id="qris-label" class="canva-text text-sm mb-2"></p>
+       <img src="assets/qris-payment.jpg" alt="QRIS payment for Kreativa Global School" class="qris-image mx-auto rounded-xl border border-gray-100 bg-white" loading="lazy">
+       <p data-template-id="qris-name" class="canva-text mt-3 font-medium"></p>
+      </div>
+      <div class="upload-zone rounded-xl mt-6 p-8 text-center cursor-pointer" onclick="this.querySelector('input').click()">
+       <i data-lucide="upload-cloud" class="w-10 h-10 mx-auto text-[#b8860b] mb-2"></i>
+       <p data-template-id="upload-label" class="canva-text"></p>
+       <p class="text-xs text-gray-400 mt-1">JPG, PNG or PDF</p><input name="paymentProof" type="file" class="hidden" accept="image/*,.pdf" onchange="generateSeatNumber('flow-a')">
+      </div>
+     </div><button data-template-id="submit-btn" type="submit" class="canva-button w-full py-4 rounded-full font-semibold text-lg transition-all hover:scale-[1.02]"></button>
+    </form><!-- Flow B -->
+    <form id="flow-b" class="hidden mt-8 space-y-5" onsubmit="showConfirmation(event)">
+     <select name="waitingListStatus" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Waiting List Status</option><option>Confirmed</option><option>Pending</option></select> <select name="studentLevel" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Student Level Applying For</option><option>Playgroup</option><option>Kindergarten</option><option>Grade 1</option></select> <input name="studentName" type="text" placeholder="Student Name" class="w-full p-4 rounded-xl border border-gray-200" required> <input name="parentName" type="text" placeholder="Parent Name" class="w-full p-4 rounded-xl border border-gray-200" required> <input name="phone" type="tel" placeholder="Phone Number" class="w-full p-4 rounded-xl border border-gray-200" required> <input name="email" type="email" placeholder="Email Address" class="w-full p-4 rounded-xl border border-gray-200" required> <select name="attendeeCount" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Number of Attendees</option><option>1</option><option>2</option></select> <select name="lunchBoxCount" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Lunch Box Reservation</option><option>1</option><option>2</option></select>
+     <div class="price-summary rounded-xl border border-[#d4af37]/40 bg-[#fefdf8] p-4">
+      <div class="flex justify-between gap-4 text-sm"><span class="text-slate-500">Ticket Price</span><span data-price-label class="font-semibold text-[#1a2744]">-</span></div>
+      <div class="flex justify-between gap-4 text-sm mt-2"><span class="text-slate-500">Quantity</span><span data-quantity-label class="font-semibold text-[#1a2744]">-</span></div>
+      <div class="flex justify-between gap-4 border-t border-[#d4af37]/30 mt-3 pt-3"><span class="font-semibold text-[#1a2744]">Total Payment</span><span data-total-label class="font-bold text-[#b8860b]">-</span></div>
+     </div>
+     <div id="payment-b" class="rounded-2xl border border-gray-100 p-6 card-shadow">
+      <h3 data-template-id="payment-title-b" class="canva-text font-semibold mb-4"></h3>
+      <div data-template-id="qris-card-b" class="canva-card rounded-xl p-6 text-center">
+       <p data-template-id="qris-label-b" class="canva-text text-sm mb-2"></p>
+       <img src="assets/qris-payment.jpg" alt="QRIS payment for Kreativa Global School" class="qris-image mx-auto rounded-xl border border-gray-100 bg-white" loading="lazy">
+       <p data-template-id="qris-name-b" class="canva-text mt-3 font-medium"></p>
+      </div>
+      <div class="upload-zone rounded-xl mt-6 p-8 text-center cursor-pointer" onclick="this.querySelector('input').click()">
+       <i data-lucide="upload-cloud" class="w-10 h-10 mx-auto text-[#b8860b] mb-2"></i>
+       <p data-template-id="upload-label-b" class="canva-text"></p>
+       <p class="text-xs text-gray-400 mt-1">JPG, PNG or PDF</p><input name="paymentProof" type="file" class="hidden" accept="image/*,.pdf" onchange="generateSeatNumber('flow-b')">
+      </div>
+     </div><button data-template-id="submit-btn-b" type="submit" class="canva-button w-full py-4 rounded-full font-semibold text-lg transition-all hover:scale-[1.02]"></button>
+    </form><!-- Flow C -->
+    <div id="flow-c" class="hidden mt-8">
+     <div data-template-id="exclusive-card" class="canva-card card-shadow rounded-2xl p-10 text-center">
+      <i data-lucide="info" class="w-12 h-12 mx-auto text-[#b8860b] mb-4"></i>
+      <p data-template-id="exclusive-text" class="canva-text text-lg leading-relaxed"></p>
+      <div class="flex flex-col sm:flex-row gap-4 mt-8 justify-center">
+       <a data-template-id="wa-btn" class="canva-button inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full font-medium transition hover:scale-105" href="https://wa.me/6285186664140" target="_blank" rel="noopener noreferrer"><i data-lucide="message-circle" class="w-5 h-5"></i></a> <a data-template-id="contact-btn" class="canva-button inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full font-medium border-2 transition hover:scale-105" href="#" target="_blank" rel="noopener noreferrer"><i data-lucide="phone" class="w-5 h-5"></i></a>
+      </div>
+     </div>
+    </div>
+   </div>
+  </section><!-- Confirmation (hidden by default) -->
+  <div id="confirmation" class="hidden fixed inset-0 z-50 bg-white/95 backdrop-blur-sm flex items-center justify-center p-6">
+   <div class="max-w-md w-full text-center">
+    <div class="w-20 h-20 mx-auto rounded-full bg-green-50 flex items-center justify-center mb-6"><i data-lucide="check-circle" class="w-10 h-10 text-green-600"></i>
+    </div>
+    <h2 data-template-id="confirm-title" class="canva-text font-display"></h2>
+    <p data-template-id="confirm-msg" class="canva-text mt-3"></p>
+    <div data-template-id="confirm-card" class="canva-card card-shadow rounded-2xl p-6 mt-8 text-left space-y-3">
+     <div class="flex justify-between"><span class="text-gray-500">Registration ID</span><span id="reg-id" class="font-mono font-semibold">GPS-2026-0001</span>
+     </div>
+     <div class="flex justify-between"><span class="text-gray-500">Seat Number(s)</span><span id="seat-display" class="font-semibold">-</span>
+     </div>
+     <div class="flex justify-between"><span class="text-gray-500">Attendees</span><span id="attendee-display" class="font-semibold">-</span>
+     </div>
+     <div class="flex justify-between"><span class="text-gray-500">Total Payment</span><span id="total-display" class="font-semibold">-</span>
+     </div>
+     <div class="flex justify-between"><span class="text-gray-500">Status</span><span class="text-green-600 font-medium">Confirmed</span>
+     </div>
+    </div>
+    <div class="mt-6 p-4 bg-gray-50 rounded-xl inline-block">
+     <div class="w-32 h-32 bg-white rounded-lg flex items-center justify-center"><i data-lucide="qr-code" class="w-20 h-20 text-[#1a2744]"></i>
+     </div>
+     <p class="text-xs text-gray-500 mt-2">Attendance QR Code</p>
+    </div>
+    <div class="flex gap-4 mt-8 justify-center">
+     <button class="px-8 py-3 bg-[#b8860b] text-white rounded-full font-medium hover:scale-105 transition flex items-center gap-2" onclick="downloadTicket()"><i data-lucide="download" class="w-5 h-5"></i>Download Ticket</button> <button class="px-8 py-3 bg-[#1a2744] text-white rounded-full font-medium hover:scale-105 transition" onclick="document.getElementById('confirmation').classList.add('hidden')">Done</button>
+    </div>
+   </div>
+  </div><!-- Footer -->
+  <footer data-template-id="footer-section" class="canva-footer mt-20 py-12 px-6">
+   <div class="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+    <div class="text-center md:text-left">
+     <h3 data-template-id="footer-name" class="canva-text font-display font-semibold"></h3>
+     <p data-template-id="footer-tagline" class="canva-text text-sm mt-1"></p>
+    </div>
+    <div class="flex gap-4">
+     <a href="#" class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition"><i data-lucide="instagram" class="w-5 h-5"></i></a> <a href="#" class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition"><i data-lucide="facebook" class="w-5 h-5"></i></a> <a href="#" class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition"><i data-lucide="youtube" class="w-5 h-5"></i></a>
+    </div>
+    <p data-template-id="footer-contact" class="canva-text text-sm"></p>
+   </div>
+  </footer>
+  <script src="script.js"></script>
+ </body>
+</html>

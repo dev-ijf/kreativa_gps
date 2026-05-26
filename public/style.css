@@ -1,0 +1,210 @@
+:root {
+  color-scheme: light;
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: 'Poppins', system-ui, sans-serif;
+  background: #f8fafc;
+  color: #1a2744;
+}
+
+/* Extracted from gps.html */
+body { font-family: 'Poppins', sans-serif; }
+.font-display { font-family: 'Poppins', sans-serif; }
+.gold-accent { color: #b8860b; }
+.bg-gold { background-color: #b8860b; }
+.navy-accent { color: #1a2744; }
+.bg-navy { background-color: #1a2744; }
+.card-shadow { box-shadow: 0 4px 40px rgba(26,39,68,0.08); }
+.upload-zone { border: 2px dashed #d4af37; transition: all 0.3s; }
+.upload-zone:hover, .upload-zone.dragover { border-color: #b8860b; background: #fefdf8; }
+section { scroll-margin-top: 2rem; }
+
+header {
+  min-height: 720px;
+  background:
+    linear-gradient(135deg, rgba(26, 39, 68, 0.96), rgba(55, 73, 109, 0.88)),
+    #1a2744;
+  color: #fff;
+}
+
+header .canva-image {
+  filter: saturate(0.9) contrast(1.05);
+}
+
+.canva-text {
+  color: inherit;
+}
+
+[data-template-id="hero-title"] {
+  font-size: clamp(2.75rem, 7vw, 5.75rem);
+  line-height: 0.98;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+[data-template-id="about-title"],
+[data-template-id="reg-title"],
+[data-template-id="confirm-title"] {
+  color: #1a2744;
+  font-size: clamp(2rem, 4vw, 3.25rem);
+  line-height: 1.08;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+[data-template-id="about-desc"],
+[data-template-id="reg-subtitle"],
+[data-template-id="confirm-msg"] {
+  color: #475569;
+}
+
+.canva-card {
+  background: #fff;
+  color: #1a2744;
+}
+
+.canva-button {
+  background: #b8860b;
+  color: #fff;
+  box-shadow: 0 14px 30px rgba(184, 134, 11, 0.24);
+}
+
+.canva-button:hover {
+  background: #a47708;
+}
+
+[data-template-id="contact-btn"] {
+  background: #fff;
+  color: #1a2744;
+  border-color: #1a2744;
+  box-shadow: none;
+}
+
+[data-template-id="qris-card"],
+[data-template-id="qris-card-b"] {
+  background: #f8fafc;
+}
+
+.qris-image {
+  width: min(100%, 320px);
+  height: auto;
+  display: block;
+}
+
+.canva-footer {
+  background: #1a2744;
+  color: #fff;
+}
+
+input,
+select {
+  color: #1a2744;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+  transform: none !important;
+}
+
+.upload-preview {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 0.75rem;
+  align-items: center;
+  max-width: 320px;
+  margin: 1rem auto 0;
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  background: #fff;
+  border: 1px solid rgba(184, 134, 11, 0.24);
+  text-align: left;
+}
+
+.upload-preview.hidden {
+  display: none;
+}
+
+.upload-preview-image,
+.upload-preview-file {
+  width: 72px;
+  height: 72px;
+  border-radius: 0.625rem;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.upload-preview-image {
+  object-fit: cover;
+}
+
+.upload-preview-file {
+  display: grid;
+  place-items: center;
+  color: #b8860b;
+  font-weight: 700;
+}
+
+.upload-preview-meta {
+  min-width: 0;
+}
+
+.upload-preview-meta strong,
+.upload-preview-meta span {
+  display: block;
+}
+
+.upload-preview-meta strong {
+  color: #1a2744;
+  font-size: 0.875rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upload-preview-meta span {
+  color: #64748b;
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.payment-proof-action {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #fefdf8;
+  color: #b8860b;
+  border: 1px solid rgba(184, 134, 11, 0.24);
+  transition: all 0.2s;
+}
+
+.payment-proof-action:hover {
+  background: #b8860b;
+  color: #fff;
+}
+
+@media (max-width: 640px) {
+  header {
+    min-height: 640px;
+  }
+
+  [data-template-id="event-card"] {
+    padding: 1.25rem;
+  }
+
+  #confirmation .flex.gap-4 {
+    flex-direction: column;
+  }
+}

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Global Parenting Summit 2026</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+ </head>
+ <body class="min-h-screen bg-[#f8fafc]">
+  <main class="max-w-7xl mx-auto px-5 py-8">
+   <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-8">
+    <div>
+     <p class="uppercase tracking-[0.25em] text-xs text-[#b8860b] font-semibold">Admin Panel</p>
+     <h1 class="text-3xl md:text-4xl font-bold text-[#1a2744] mt-2">Registration Management</h1>
+     <p class="text-slate-500 mt-2">Kelola pendaftaran Global Parenting Summit 2026.</p>
+    </div>
+    <a href="/" class="canva-button inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full font-medium">
+     <i data-lucide="arrow-left" class="w-5 h-5"></i>
+     Back to Form
+    </a>
+   </div>
+
+   <section class="grid md:grid-cols-3 gap-4 mb-5">
+    <div class="bg-white border border-slate-200 rounded-xl p-5">
+     <div class="flex items-center justify-between gap-4">
+      <div>
+       <p class="text-sm text-slate-500">Ticket Quota</p>
+       <p id="admin-quota-total" class="text-3xl font-bold text-[#1a2744] mt-1">-</p>
+      </div>
+      <div class="w-11 h-11 rounded-full bg-[#fefdf8] text-[#b8860b] flex items-center justify-center">
+       <i data-lucide="ticket" class="w-5 h-5"></i>
+      </div>
+     </div>
+    </div>
+    <div class="bg-white border border-slate-200 rounded-xl p-5">
+     <div class="flex items-center justify-between gap-4">
+      <div>
+       <p class="text-sm text-slate-500">Used Tickets</p>
+       <p id="admin-quota-used" class="text-3xl font-bold text-[#1a2744] mt-1">-</p>
+      </div>
+      <div class="w-11 h-11 rounded-full bg-slate-100 text-[#1a2744] flex items-center justify-center">
+       <i data-lucide="users" class="w-5 h-5"></i>
+      </div>
+     </div>
+    </div>
+    <div class="bg-white border border-slate-200 rounded-xl p-5">
+     <div class="flex items-center justify-between gap-4">
+      <div>
+       <p class="text-sm text-slate-500">Remaining Tickets</p>
+       <p id="admin-quota-remaining" class="text-3xl font-bold text-[#b8860b] mt-1">-</p>
+      </div>
+      <div class="w-11 h-11 rounded-full bg-green-50 text-green-700 flex items-center justify-center">
+       <i data-lucide="badge-check" class="w-5 h-5"></i>
+      </div>
+     </div>
+    </div>
+   </section>
+
+   <section class="bg-white border border-slate-200 rounded-xl p-4 md:p-5 mb-5">
+    <div class="grid md:grid-cols-[1fr_180px_180px_180px_auto] gap-3">
+     <input id="search-input" type="search" placeholder="Search name, email, phone, ID, seat" class="w-full p-3 rounded-lg border border-slate-200">
+     <select id="category-filter" class="w-full p-3 rounded-lg border border-slate-200">
+      <option value="">All Categories</option>
+      <option value="existing">Existing Parent</option>
+      <option value="waitlist">Waiting List</option>
+     </select>
+     <select id="payment-filter" class="w-full p-3 rounded-lg border border-slate-200">
+      <option value="">All Payments</option>
+      <option value="pending">Pending</option>
+      <option value="verified">Verified</option>
+      <option value="rejected">Rejected</option>
+     </select>
+     <select id="status-filter" class="w-full p-3 rounded-lg border border-slate-200">
+      <option value="">All Statuses</option>
+      <option value="confirmed">Confirmed</option>
+      <option value="attended">Attended</option>
+      <option value="cancelled">Cancelled</option>
+     </select>
+     <button id="refresh-btn" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-[#1a2744] text-white font-medium">
+      <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+      Refresh
+     </button>
+    </div>
+   </section>
+
+   <section class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+    <div class="overflow-x-auto">
+     <table class="min-w-full text-sm">
+      <thead class="bg-slate-50 text-slate-500">
+       <tr>
+        <th class="text-left font-semibold px-4 py-3">Registration</th>
+        <th class="text-left font-semibold px-4 py-3">Student</th>
+        <th class="text-left font-semibold px-4 py-3">Parent</th>
+        <th class="text-left font-semibold px-4 py-3">Category</th>
+        <th class="text-left font-semibold px-4 py-3">Payment</th>
+        <th class="text-left font-semibold px-4 py-3">Status</th>
+        <th class="text-left font-semibold px-4 py-3">Notes</th>
+        <th class="text-right font-semibold px-4 py-3">Actions</th>
+       </tr>
+      </thead>
+      <tbody id="registrations-body" class="divide-y divide-slate-100"></tbody>
+     </table>
+    </div>
+    <div id="empty-state" class="hidden p-10 text-center text-slate-500">No registrations found.</div>
+   </section>
+  </main>
+  <script src="admin.js"></script>
+ </body>
+</html>
