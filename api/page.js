@@ -30,7 +30,7 @@ export default async function handler(request, response) {
   }
 
   try {
-    const filePath = path.join(process.cwd(), 'public', file.path);
+    const filePath = path.join(process.cwd(), 'dist', file.path);
     const body = await readFile(filePath);
 
     response.statusCode = 200;

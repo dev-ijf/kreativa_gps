@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "node scripts/build.js",
     "start": "node server.js",
     "migrate": "node scripts/migrate.js"
   },

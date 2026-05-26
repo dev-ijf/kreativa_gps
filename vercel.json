@@ -1,42 +1,28 @@
 {
   "version": 2,
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
   "functions": {
     "api/page.js": {
-      "includeFiles": "public/**"
+      "includeFiles": "dist/**"
     }
   },
   "rewrites": [
     {
       "source": "/",
-      "destination": "/api/page?file=index"
+      "destination": "/index.html"
     },
     {
       "source": "/index.html",
-      "destination": "/api/page?file=index"
+      "destination": "/index.html"
     },
     {
       "source": "/admin",
-      "destination": "/api/page?file=admin"
+      "destination": "/admin.html"
     },
     {
       "source": "/admin.html",
-      "destination": "/api/page?file=admin"
-    },
-    {
-      "source": "/style.css",
-      "destination": "/api/page?file=style"
-    },
-    {
-      "source": "/script.js",
-      "destination": "/api/page?file=script"
-    },
-    {
-      "source": "/admin.js",
-      "destination": "/api/page?file=adminScript"
-    },
-    {
-      "source": "/assets/qris-payment.jpg",
-      "destination": "/api/page?file=qris"
+      "destination": "/admin.html"
     }
   ]
 }
