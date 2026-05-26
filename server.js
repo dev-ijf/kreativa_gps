@@ -724,6 +724,26 @@ async function handleApi(request, response, url) {
     return;
   }
 
+  const proofMatch = route.match(/^\/api\/payment-proofs\/([^/]+)$/);
+  if (proofMatch && request.method === 'GET') {
+    const filename = path.basename(decodeURIComponent(proofMatch[1]));
+    const proofPath = path.join(paymentProofDir, filename);
+
+    try {
+      const file = await readFile(proofPath);
+      const extension = path.extname(filename).toLowerCase();
+      response.writeHead(200, {
+        'Content-Type': contentTypes[extension] || 'application/octet-stream',
+        'Cache-Control': 'private, max-age=300',
+        'Content-Disposition': `inline; filename="${filename}"`
+      });
+      response.end(file);
+    } catch {
+      sendJson(response, 404, { error: 'Payment proof not found.' });
+    }
+    return;
+  }
+
   const detailMatch = route.match(/^\/api\/registrations\/([^/]+)$/);
   if (detailMatch) {
     const id = decodeURIComponent(detailMatch[1]);

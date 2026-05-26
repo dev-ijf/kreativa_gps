@@ -10,6 +10,7 @@ node_modules/
 
 data/*.json
 uploads/
+.vercel/
 
 npm-debug.log*
 yarn-debug.log*

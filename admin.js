@@ -60,7 +60,7 @@ function formatCurrency(value) {
 }
 
 function paymentProofUrl(filename) {
-  return `/uploads/payment-proofs/${encodeURIComponent(filename)}`;
+  return `/api/payment-proofs/${encodeURIComponent(filename)}`;
 }
 
 function renderPaymentProof(row) {
