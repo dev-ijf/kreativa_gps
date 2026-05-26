@@ -19,8 +19,8 @@ const templateContent = {
   'qris-label-b': 'Scan QRIS Syariah Payment to complete your reservation',
   'qris-name': 'Kreativa Global School',
   'qris-name-b': 'Kreativa Global School',
-  'upload-label': 'Upload payment proof',
-  'upload-label-b': 'Upload payment proof',
+  'upload-label': 'Upload payment proof (required)',
+  'upload-label-b': 'Upload payment proof (required)',
   'submit-btn': 'Submit Registration',
   'submit-btn-b': 'Submit Registration',
   'wa-btn': 'Whatsapp',
@@ -358,6 +358,25 @@ function getFriendlyErrorMessage(error) {
   return message;
 }
 
+function validatePaymentProofSelection(form) {
+  const input = form.querySelector('[name="paymentProof"]:not(:disabled)');
+  const file = input?.files && input.files[0];
+
+  if (file?.name) {
+    return true;
+  }
+
+  const uploadZone = input?.closest('.upload-zone');
+  if (uploadZone) {
+    uploadZone.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    uploadZone.classList.add('dragover');
+    window.setTimeout(() => uploadZone.classList.remove('dragover'), 1400);
+  }
+
+  alert('Payment proof is required. Please upload JPG, PNG, or PDF.');
+  return false;
+}
+
 async function buildRegistrationPayload(form) {
   const formData = new FormData(form);
   const paymentProof = formData.get('paymentProof');
@@ -416,6 +435,10 @@ async function showConfirmation(event) {
 
   if (attendeeCount !== lunchBoxCount) {
     alert('Lunch box reservation must match number of attendees.');
+    return;
+  }
+
+  if (!validatePaymentProofSelection(form)) {
     return;
   }
 

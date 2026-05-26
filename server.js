@@ -273,6 +273,8 @@ function validateRegistration(payload) {
   const parentName = normalizeText(payload.parentName);
   const phone = normalizeText(payload.phone);
   const email = normalizeText(payload.email);
+  const paymentProofFilename = normalizeText(payload.paymentProofFilename);
+  const paymentProofData = normalizeText(payload.paymentProofData);
   const { attendeeCount, lunchBoxCount } = normalizeRegistrationCounts(payload);
 
   if (!['existing', 'waitlist'].includes(category)) {
@@ -285,6 +287,10 @@ function validateRegistration(payload) {
 
   if (!email.includes('@')) {
     return 'Email address is not valid.';
+  }
+
+  if (!paymentProofFilename || !paymentProofData) {
+    return 'Payment proof is required.';
   }
 
   if (attendeeCount < 1 || attendeeCount > 2) {
