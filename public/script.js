@@ -32,7 +32,7 @@ const templateContent = {
 };
 
 const imageSources = {
-  'hero-img': 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=1800&q=80',
+  'hero-img': 'assets/bg-1.jpeg',
   'about-img': 'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=1200&q=80'
 };
 
