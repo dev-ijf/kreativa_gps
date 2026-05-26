@@ -1,13 +1,42 @@
 {
   "version": 2,
+  "functions": {
+    "api/page.js": {
+      "includeFiles": "public/**"
+    }
+  },
   "rewrites": [
     {
       "source": "/",
-      "destination": "/index.html"
+      "destination": "/api/page?file=index"
+    },
+    {
+      "source": "/index.html",
+      "destination": "/api/page?file=index"
     },
     {
       "source": "/admin",
-      "destination": "/admin.html"
+      "destination": "/api/page?file=admin"
+    },
+    {
+      "source": "/admin.html",
+      "destination": "/api/page?file=admin"
+    },
+    {
+      "source": "/style.css",
+      "destination": "/api/page?file=style"
+    },
+    {
+      "source": "/script.js",
+      "destination": "/api/page?file=script"
+    },
+    {
+      "source": "/admin.js",
+      "destination": "/api/page?file=adminScript"
+    },
+    {
+      "source": "/assets/qris-payment.jpg",
+      "destination": "/api/page?file=qris"
     }
   ]
 }
