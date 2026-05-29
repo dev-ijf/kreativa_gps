@@ -30,6 +30,7 @@ const defaultEligibleStudents = [
   { id: 2, studentName: 'Aisha Nabila', parentStatus: 'existing_parent', grade: 'K2' },
   { id: 3, studentName: 'Muhammad Arkan', parentStatus: 'waiting_list_parent', grade: 'P1' }
 ];
+let verificationSchemaReady = false;
 
 const contentTypes = {
   '.html': 'text/html; charset=utf-8',
@@ -116,6 +117,61 @@ function createPoolConfig() {
   }
 
   return config;
+}
+
+async function ensureVerificationSchema(pool) {
+  if (verificationSchemaReady) {
+    return;
+  }
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS eligible_students (
+      id SERIAL PRIMARY KEY,
+      student_name VARCHAR(255) NOT NULL,
+      parent_status VARCHAR(100) NOT NULL CHECK (
+        parent_status IN ('existing_parent', 'waiting_list_parent')
+      ),
+      grade VARCHAR(100),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    ALTER TABLE registrations
+    ADD COLUMN IF NOT EXISTS parent_status VARCHAR(100);
+
+    ALTER TABLE registrations
+    ADD COLUMN IF NOT EXISTS verification_status VARCHAR(30) DEFAULT 'not_verified';
+
+    ALTER TABLE registrations
+    ADD COLUMN IF NOT EXISTS matched_student_id INTEGER;
+
+    ALTER TABLE registrations
+    ADD COLUMN IF NOT EXISTS verification_notes TEXT;
+
+    ALTER TABLE registrations
+    ALTER COLUMN seat_number DROP NOT NULL;
+
+    ALTER TABLE registrations
+    DROP CONSTRAINT IF EXISTS registrations_seat_number_key;
+
+    ALTER TABLE registrations
+    DROP CONSTRAINT IF EXISTS registrations_verification_status_check;
+
+    ALTER TABLE registrations
+    ADD CONSTRAINT registrations_verification_status_check
+    CHECK (verification_status IN ('verified', 'need_review', 'not_verified'));
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_registrations_seat_number_unique
+    ON registrations(seat_number)
+    WHERE seat_number IS NOT NULL;
+
+    CREATE INDEX IF NOT EXISTS idx_eligible_students_parent_status
+    ON eligible_students(parent_status);
+
+    CREATE INDEX IF NOT EXISTS idx_registrations_verification_status
+    ON registrations(verification_status);
+  `);
+
+  verificationSchemaReady = true;
 }
 
 function normalizeQuota(value) {
@@ -857,6 +913,7 @@ async function createPostgresRepository() {
       };
     }
 
+    await ensureVerificationSchema(pool);
     const result = await pool.query(
       `SELECT id, student_name, parent_status, grade
        FROM eligible_students
@@ -1041,6 +1098,7 @@ async function createPostgresRepository() {
         throw error;
       }
 
+      await ensureVerificationSchema(pool);
       const registrationId = normalizeText(payload.registrationId || payload.registration_id || payload.id);
       const currentResult = await pool.query(
         `SELECT * FROM registrations WHERE id::text = $1 OR registration_id = $1 LIMIT 1`,
