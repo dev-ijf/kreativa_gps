@@ -2,30 +2,11 @@
   "version": 2,
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "cleanUrls": true,
+  "trailingSlash": false,
   "functions": {
     "api/page.js": {
       "includeFiles": "dist/**"
     }
-  },
-  "redirects": [
-    {
-      "source": "/index.html",
-      "destination": "/",
-      "permanent": false
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/",
-      "destination": "/api/page?file=index"
-    },
-    {
-      "source": "/admin",
-      "destination": "/api/page?file=admin"
-    },
-    {
-      "source": "/admin.html",
-      "destination": "/api/page?file=admin"
-    }
-  ]
+  }
 }
