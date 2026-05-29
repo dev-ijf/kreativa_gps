@@ -418,7 +418,7 @@ function getFriendlyErrorMessage(error) {
     'Phone number must contain numbers only.': 'Nomor telepon hanya boleh berisi angka.',
     'Email address is not valid.': 'Alamat email tidak valid.',
     'Number of attendees must be 1 or 2.': 'Jumlah kehadiran harus 1 atau 2.',
-    'Lunch box reservation must match number of attendees.': 'Reservasi kotak makan harus sama dengan jumlah kehadiran.',
+    'Lunch box reservation must match number of attendees.': 'Paket Snack & Makan Siang harus sama dengan jumlah kehadiran.',
     'Payment proof is required.': 'Bukti pembayaran wajib diunggah.',
     'Payment proof upload is only available for verified registrations.': 'Unggah bukti pembayaran hanya tersedia untuk pendaftaran yang sudah terverifikasi.',
     'Payment is only available for verified registrations.': 'Pembayaran hanya tersedia untuk pendaftaran yang sudah terverifikasi.',
@@ -618,7 +618,7 @@ async function showConfirmation(event) {
   const isPaymentStep = form.dataset.verificationStatus === 'verified' && form.dataset.registrationId;
 
   if (attendeeCount !== lunchBoxCount) {
-    alert('Reservasi lunch box harus sama dengan jumlah kehadiran.');
+    alert('Paket Snack & Makan Siang harus sama dengan jumlah kehadiran.');
     return;
   }
 
