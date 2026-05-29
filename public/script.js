@@ -1,18 +1,18 @@
 ﻿const templateContent = {
   'hero-eyebrow': 'Kreativa Global School Mempersembahkan',
   'hero-title': 'Global Parenting Summit 2026',
-  'hero-subtitle': 'Sesi pagi untuk orang tua agar dapat terhubung, belajar, dan mempersiapkan anak menghadapi dunia yang terus berubah.',
+  'hero-subtitle': '',
   'event-date': 'Sabtu, 20 Juni 2026',
   'event-time': '08:00 - 14:00 WIB',
-  'event-venue': 'Aula Pameran, Summarecon Mall Bandung',
+  'event-venue': 'Exibition Hall, Summarecon Mall Bandung',
   'hero-cta': 'Daftar Sekarang',
   'about-title': 'APA ITU GLOBAL PARENTING SUMMIT?',
   'about-desc-1': 'Global Parenting Summit adalah forum edukasi tahunan yang diinisiasi oleh Kreativa Global School untuk mendukung orang tua dalam menghadapi tantangan mendampingi anak di dunia yang terus berubah dengan cepat.',
   'about-desc-2': 'Kami percaya bahwa peran orang tua sangat penting dalam perjalanan pendidikan anak. Melalui summit ini, para pendidik, pakar, dan orang tua berkumpul untuk mengeksplorasi cara keluarga dapat mempersiapkan anak agar tumbuh dengan percaya diri dan memiliki tujuan.',
   'about-desc-3': 'Melalui diskusi yang bermakna dan berbagi wawasan, Global Parenting Summit mendorong orang tua untuk berperan aktif dalam mendampingi perkembangan anak sekaligus memperkuat kolaborasi antara keluarga dan sekolah.',
   'reg-title': 'Pendaftaran',
-  'reg-subtitle': 'Pilih kategori orang tua untuk melihat alur pendaftaran yang sesuai.',
-  'verification-note': 'Pendaftaran akan diverifikasi berdasarkan nama siswa di data sekolah sebelum pembayaran dapat dilakukan.',
+  'reg-subtitle': 'Pilih kategori untuk melihat alur pendaftaran yang sesuai.',
+  'verification-note': '',
   'reg-type-label': 'Kategori Orang Tua',
   'payment-title': 'Konfirmasi Pembayaran',
   'payment-title-b': 'Konfirmasi Pembayaran',
@@ -82,7 +82,7 @@ function resetFlows() {
 }
 
 function hideResultSections() {
-  ['review-section', 'interest-section', 'confirmation'].forEach(id => {
+  ['review-section', 'already-registered-section', 'interest-section', 'confirmation'].forEach(id => {
     document.getElementById(id)?.classList.add('hidden');
   });
 }
@@ -421,6 +421,7 @@ function getFriendlyErrorMessage(error) {
     'Lunch box reservation must match number of attendees.': 'Reservasi kotak makan harus sama dengan jumlah kehadiran.',
     'Payment proof is required.': 'Bukti pembayaran wajib diunggah.',
     'Payment proof upload is only available for verified registrations.': 'Unggah bukti pembayaran hanya tersedia untuk pendaftaran yang sudah terverifikasi.',
+    'Payment is only available for verified registrations.': 'Pembayaran hanya tersedia untuk pendaftaran yang sudah terverifikasi.',
     'Registration not found.': 'Data pendaftaran tidak ditemukan.',
     'Ticket quota is full.': 'Kuota tiket sudah penuh.',
     'Registration failed.': 'Pendaftaran gagal.'
@@ -540,6 +541,12 @@ function showReviewSection() {
   document.getElementById('review-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
+function showAlreadyRegisteredSection() {
+  hideResultSections();
+  document.getElementById('already-registered-section')?.classList.remove('hidden');
+  document.getElementById('already-registered-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
 function showInterestSection() {
   hideResultSections();
   document.getElementById('interest-section')?.classList.remove('hidden');
@@ -601,6 +608,11 @@ async function showConfirmation(event) {
 
     if (result.status === 'need_review') {
       showReviewSection(result.registration_id);
+      return;
+    }
+
+    if (result.status === 'already_registered') {
+      showAlreadyRegisteredSection(result.registration_id);
       return;
     }
 

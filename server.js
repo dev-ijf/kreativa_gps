@@ -31,6 +31,7 @@ const defaultEligibleStudents = [
   { id: 3, studentName: 'Muhammad Arkan', parentStatus: 'waiting_list_parent', grade: 'P1' }
 ];
 let verificationSchemaReady = false;
+const activeDuplicatePaymentStatuses = new Set(['pending', 'verified', 'paid', 'confirmed', 'waiting_confirmation']);
 
 const contentTypes = {
   '.html': 'text/html; charset=utf-8',
@@ -58,7 +59,7 @@ const allowedUpdates = new Set([
   'lunchBoxCount'
 ]);
 
-const paymentStatuses = new Set(['pending', 'verified', 'rejected']);
+const paymentStatuses = new Set(['pending', 'verified', 'rejected', 'paid', 'confirmed', 'waiting_confirmation', 'failed', 'canceled', 'cancelled', 'expired']);
 const registrationStatuses = new Set(['confirmed', 'cancelled', 'attended']);
 
 const columnMap = {
@@ -145,7 +146,19 @@ async function ensureVerificationSchema(pool) {
     ADD COLUMN IF NOT EXISTS matched_student_id INTEGER;
 
     ALTER TABLE registrations
+    ADD COLUMN IF NOT EXISTS duplicate_reference_id INTEGER;
+
+    ALTER TABLE registrations
     ADD COLUMN IF NOT EXISTS verification_notes TEXT;
+
+    ALTER TABLE registrations
+    ADD COLUMN IF NOT EXISTS payment_proof_filename TEXT;
+
+    ALTER TABLE registrations
+    ADD COLUMN IF NOT EXISTS payment_proof_mime_type TEXT;
+
+    ALTER TABLE registrations
+    ADD COLUMN IF NOT EXISTS payment_proof_data TEXT;
 
     ALTER TABLE registrations
     ALTER COLUMN seat_number DROP NOT NULL;
@@ -157,8 +170,15 @@ async function ensureVerificationSchema(pool) {
     DROP CONSTRAINT IF EXISTS registrations_verification_status_check;
 
     ALTER TABLE registrations
+    DROP CONSTRAINT IF EXISTS registrations_payment_status_check;
+
+    ALTER TABLE registrations
     ADD CONSTRAINT registrations_verification_status_check
-    CHECK (verification_status IN ('verified', 'need_review', 'not_verified'));
+    CHECK (verification_status IN ('verified', 'need_review', 'not_verified', 'already_registered'));
+
+    ALTER TABLE registrations
+    ADD CONSTRAINT registrations_payment_status_check
+    CHECK (payment_status IN ('pending', 'verified', 'rejected', 'paid', 'confirmed', 'waiting_confirmation', 'failed', 'canceled', 'cancelled', 'expired'));
 
     CREATE UNIQUE INDEX IF NOT EXISTS idx_registrations_seat_number_unique
     ON registrations(seat_number)
@@ -492,6 +512,10 @@ function getVerificationMessage(status) {
     return 'Student name verified.';
   }
 
+  if (status === 'already_registered') {
+    return 'This student has already been registered.';
+  }
+
   if (status === 'need_review') {
     return 'Student name needs manual review.';
   }
@@ -506,6 +530,10 @@ function getVerificationNextStep(status) {
 
   if (status === 'need_review') {
     return 'show_review';
+  }
+
+  if (status === 'already_registered') {
+    return 'show_already_registered';
   }
 
   return 'show_interest_message';
@@ -645,6 +673,52 @@ async function verifyJsonStudentName(store, { studentName, parentStatus }) {
   };
 }
 
+function isActiveDuplicatePaymentStatus(paymentStatus) {
+  const normalized = normalizeText(paymentStatus);
+  return !normalized || activeDuplicatePaymentStatuses.has(normalized);
+}
+
+function checkJsonExistingRegistration(store, { matchedStudentId, studentName, parentStatus }) {
+  if (matchedStudentId) {
+    const matched = store.registrations
+      .filter(row => row.matchedStudentId === matchedStudentId
+        && row.verificationStatus === 'verified'
+        && isActiveDuplicatePaymentStatus(row.paymentStatus))
+      .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)))[0];
+
+    if (matched) {
+      return {
+        exists: true,
+        registrationId: matched.id,
+        notes: `Duplicate registration found by matched_student_id. Existing registration ID: ${matched.id}`
+      };
+    }
+  }
+
+  const normalizedName = normalizeName(studentName);
+  const normalizedParentStatus = normalizeName(parentStatus);
+  const fallback = store.registrations
+    .filter(row => normalizeName(row.studentName) === normalizedName
+      && normalizeName(row.parentStatus) === normalizedParentStatus
+      && row.verificationStatus === 'verified'
+      && isActiveDuplicatePaymentStatus(row.paymentStatus))
+    .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)))[0];
+
+  if (fallback) {
+    return {
+      exists: true,
+      registrationId: fallback.id,
+      notes: `Duplicate registration found by student_name + parent_status. Existing registration ID: ${fallback.id}`
+    };
+  }
+
+  return {
+    exists: false,
+    registrationId: null,
+    notes: 'No existing registration found.'
+  };
+}
+
 function filterRegistrations(rows, searchParams) {
   const search = normalizeText(searchParams.get('search')).toLowerCase();
   const category = normalizeText(searchParams.get('category'));
@@ -689,6 +763,7 @@ function toCamelRow(row) {
     parentStatus: row.parent_status || '',
     verificationStatus: row.verification_status || 'not_verified',
     matchedStudentId: row.matched_student_id || null,
+    duplicateReferenceId: row.duplicate_reference_id || null,
     verificationNotes: row.verification_notes || '',
     status: row.status,
     notes: row.notes || '',
@@ -740,6 +815,24 @@ async function createJsonRepository() {
         studentName: payload.studentName,
         parentStatus
       });
+      let verificationStatus = verification.status;
+      let duplicateReferenceId = null;
+      let verificationNotes = verification.notes;
+
+      if (verification.status === 'verified') {
+        const duplicateCheck = checkJsonExistingRegistration(store, {
+          matchedStudentId: verification.matchedStudentId,
+          studentName: payload.studentName,
+          parentStatus
+        });
+
+        if (duplicateCheck.exists) {
+          verificationStatus = 'already_registered';
+          duplicateReferenceId = duplicateCheck.registrationId;
+          verificationNotes = duplicateCheck.notes;
+        }
+      }
+
       const now = new Date().toISOString();
       const registration = {
         id: randomUUID(),
@@ -759,9 +852,10 @@ async function createJsonRepository() {
         totalAmount: attendeeCount * ticketPrice,
         paymentStatus: 'pending',
         paymentProofFilename: '',
-        verificationStatus: verification.status,
+        verificationStatus,
         matchedStudentId: verification.matchedStudentId,
-        verificationNotes: verification.notes,
+        duplicateReferenceId,
+        verificationNotes,
         status: 'confirmed',
         notes: '',
         checkedInAt: '',
@@ -770,15 +864,17 @@ async function createJsonRepository() {
       };
       store.registrations.push(registration);
       await writeStore(store);
+      const publicRegistration = { ...registration };
+      delete publicRegistration.duplicateReferenceId;
 
       return {
         success: true,
-        status: verification.status,
+        status: verificationStatus,
         registration_id: registration.id,
         registrationId: registration.registrationId,
-        message: getVerificationMessage(verification.status),
-        next_step: getVerificationNextStep(verification.status),
-        registration
+        message: getVerificationMessage(verificationStatus),
+        next_step: getVerificationNextStep(verificationStatus),
+        registration: publicRegistration
       };
     },
 
@@ -803,7 +899,7 @@ async function createJsonRepository() {
       const current = store.registrations[rowIndex];
 
       if (current.verificationStatus !== 'verified') {
-        const error = new Error('Payment proof upload is only available for verified registrations.');
+        const error = new Error('Payment is only available for verified registrations.');
         error.statusCode = 403;
         throw error;
       }
@@ -954,6 +1050,74 @@ async function createPostgresRepository() {
     };
   }
 
+  async function checkExistingRegistration({ matchedStudentId, studentName, parentStatus }) {
+    await ensureVerificationSchema(pool);
+
+    if (matchedStudentId) {
+      const result = await pool.query(
+        `SELECT id, registration_id, student_name, parent_status, verification_status, payment_status, created_at
+         FROM registrations
+         WHERE matched_student_id = $1
+           AND verification_status = 'verified'
+           AND (
+             payment_status IS NULL
+             OR payment_status IN ('pending', 'verified', 'paid', 'confirmed', 'waiting_confirmation')
+           )
+         ORDER BY created_at ASC
+         LIMIT 1`,
+        [matchedStudentId]
+      );
+
+      if (result.rows.length > 0) {
+        return {
+          exists: true,
+          registrationId: result.rows[0].id,
+          notes: `Duplicate registration found by matched_student_id. Existing registration ID: ${result.rows[0].id}`
+        };
+      }
+    }
+
+    const normalizedName = normalizeName(studentName);
+    const normalizedParentStatus = normalizeName(parentStatus);
+
+    if (!normalizedName || !normalizedParentStatus) {
+      return {
+        exists: false,
+        registrationId: null,
+        notes: 'No existing registration found.'
+      };
+    }
+
+    const fallbackResult = await pool.query(
+      `SELECT id, registration_id, student_name, parent_status, verification_status, payment_status, created_at
+       FROM registrations
+       WHERE LOWER(TRIM(REGEXP_REPLACE(student_name, '\\s+', ' ', 'g'))) = $1
+         AND LOWER(TRIM(REGEXP_REPLACE(parent_status, '\\s+', ' ', 'g'))) = $2
+         AND verification_status = 'verified'
+         AND (
+           payment_status IS NULL
+           OR payment_status IN ('pending', 'verified', 'paid', 'confirmed', 'waiting_confirmation')
+         )
+       ORDER BY created_at ASC
+       LIMIT 1`,
+      [normalizedName, normalizedParentStatus]
+    );
+
+    if (fallbackResult.rows.length > 0) {
+      return {
+        exists: true,
+        registrationId: fallbackResult.rows[0].id,
+        notes: `Duplicate registration found by student_name + parent_status. Existing registration ID: ${fallbackResult.rows[0].id}`
+      };
+    }
+
+    return {
+      exists: false,
+      registrationId: null,
+      notes: 'No existing registration found.'
+    };
+  }
+
   return {
     async health() {
       await pool.query('SELECT 1');
@@ -1026,6 +1190,24 @@ async function createPostgresRepository() {
         studentName: payload.studentName,
         parentStatus
       });
+      let verificationStatus = verification.status;
+      let duplicateReferenceId = null;
+      let verificationNotes = verification.notes;
+
+      if (verification.status === 'verified') {
+        const duplicateCheck = await checkExistingRegistration({
+          matchedStudentId: verification.matchedStudentId,
+          studentName: payload.studentName,
+          parentStatus
+        });
+
+        if (duplicateCheck.exists) {
+          verificationStatus = 'already_registered';
+          duplicateReferenceId = duplicateCheck.registrationId;
+          verificationNotes = duplicateCheck.notes;
+        }
+      }
+
       const nextResult = await pool.query(
         `SELECT COALESCE(MAX(id), 0) + 1 AS next_id FROM registrations`
       );
@@ -1044,9 +1226,10 @@ async function createPostgresRepository() {
         normalizeText(payload.email),
         attendeeCount,
         lunchBoxCount,
-        verification.status,
+        verificationStatus,
         verification.matchedStudentId,
-        verification.notes,
+        duplicateReferenceId,
+        verificationNotes,
         ticketPrice,
         attendeeCount * ticketPrice
       ];
@@ -1066,27 +1249,30 @@ async function createPostgresRepository() {
           lunch_box_count,
           verification_status,
           matched_student_id,
+          duplicate_reference_id,
           verification_notes,
           ticket_price,
           total_amount
         ) VALUES (
           $1, $2, $3, NULLIF($4, ''), $5, $6, $7, $8, $9, $10,
-          $11, $12, $13, $14, $15, $16
+          $11, $12, $13, $14, $15, $16, $17
         )
         RETURNING *`,
         values
       );
 
       const registration = toCamelRow(result.rows[0]);
+      const publicRegistration = { ...registration };
+      delete publicRegistration.duplicateReferenceId;
 
       return {
         success: true,
-        status: verification.status,
+        status: verificationStatus,
         registration_id: registration.id,
         registrationId: registration.registrationId,
-        message: getVerificationMessage(verification.status),
-        next_step: getVerificationNextStep(verification.status),
-        registration
+        message: getVerificationMessage(verificationStatus),
+        next_step: getVerificationNextStep(verificationStatus),
+        registration: publicRegistration
       };
     },
 
@@ -1113,7 +1299,7 @@ async function createPostgresRepository() {
       }
 
       if (current.verification_status !== 'verified') {
-        const error = new Error('Payment proof upload is only available for verified registrations.');
+        const error = new Error('Payment is only available for verified registrations.');
         error.statusCode = 403;
         throw error;
       }
