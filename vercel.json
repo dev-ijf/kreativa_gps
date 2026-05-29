@@ -2,25 +2,38 @@
   "version": 2,
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "cleanUrls": true,
   "trailingSlash": false,
   "functions": {
     "api/page.js": {
       "includeFiles": "dist/**"
     }
   },
-  "rewrites": [
+  "routes": [
     {
-      "source": "/",
-      "destination": "/api/page"
+      "src": "^/$",
+      "dest": "/api/page"
     },
     {
-      "source": "/admin",
-      "destination": "/api/page?file=admin"
+      "src": "^/index\\.html$",
+      "status": 302,
+      "headers": {
+        "Location": "/"
+      }
     },
     {
-      "source": "/admin.html",
-      "destination": "/api/page?file=admin"
+      "src": "^/admin/?$",
+      "dest": "/api/page?file=admin"
+    },
+    {
+      "src": "^/admin\\.html$",
+      "dest": "/api/page?file=admin"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "^/(.*)$",
+      "dest": "/$1"
     }
   ]
 }
