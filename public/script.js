@@ -1,34 +1,34 @@
-const templateContent = {
-  'hero-eyebrow': 'Kreativa Global School Presents',
+﻿const templateContent = {
+  'hero-eyebrow': 'Kreativa Global School Mempersembahkan',
   'hero-title': 'Global Parenting Summit 2026',
-  'hero-subtitle': 'A focused morning for parents to connect, learn, and prepare children for a changing world.',
-  'event-date': 'Saturday, 20 June 2026',
+  'hero-subtitle': 'Sesi pagi untuk orang tua agar dapat terhubung, belajar, dan mempersiapkan anak menghadapi dunia yang terus berubah.',
+  'event-date': 'Sabtu, 20 Juni 2026',
   'event-time': '08:00 - 14:00 WIB',
-  'event-venue': 'Exibition Hall, Summarecon Mall Bandung',
-  'hero-cta': 'Register Now',
-  'about-title': 'WHAT IS GLOBAL PARENTING SUMMIT?',
-  'about-desc-1': 'Global Parenting Summit is an annual educational forum initiated by Kreativa Global School to support parents in navigating the challenges of raising children in a rapidly changing world.',
-  'about-desc-2': 'We believe parenting plays a critical role in a child’s educational journey, and through this summit, educators, experts, and parents come together to explore how families can better prepare children to grow with confidence and purpose.',
-  'about-desc-3': 'Through meaningful discussions and shared insights, Global Parenting Summit encourages parents to take an active role in guiding their children’s development while strengthening collaboration between families and schools.',
-  'reg-title': 'Registration',
-  'reg-subtitle': 'Choose your parent category to see the correct registration flow.',
-  'verification-note': 'Registration will be verified based on student name in school records before payment can be completed.',
-  'reg-type-label': 'Parent Category',
-  'payment-title': 'Payment Confirmation',
-  'payment-title-b': 'Payment Confirmation',
-  'qris-label': 'Scan QRIS Syariah Payment to complete your reservation',
-  'qris-label-b': 'Scan QRIS Syariah Payment to complete your reservation',
+  'event-venue': 'Aula Pameran, Summarecon Mall Bandung',
+  'hero-cta': 'Daftar Sekarang',
+  'about-title': 'APA ITU GLOBAL PARENTING SUMMIT?',
+  'about-desc-1': 'Global Parenting Summit adalah forum edukasi tahunan yang diinisiasi oleh Kreativa Global School untuk mendukung orang tua dalam menghadapi tantangan mendampingi anak di dunia yang terus berubah dengan cepat.',
+  'about-desc-2': 'Kami percaya bahwa peran orang tua sangat penting dalam perjalanan pendidikan anak. Melalui summit ini, para pendidik, pakar, dan orang tua berkumpul untuk mengeksplorasi cara keluarga dapat mempersiapkan anak agar tumbuh dengan percaya diri dan memiliki tujuan.',
+  'about-desc-3': 'Melalui diskusi yang bermakna dan berbagi wawasan, Global Parenting Summit mendorong orang tua untuk berperan aktif dalam mendampingi perkembangan anak sekaligus memperkuat kolaborasi antara keluarga dan sekolah.',
+  'reg-title': 'Pendaftaran',
+  'reg-subtitle': 'Pilih kategori orang tua untuk melihat alur pendaftaran yang sesuai.',
+  'verification-note': 'Pendaftaran akan diverifikasi berdasarkan nama siswa di data sekolah sebelum pembayaran dapat dilakukan.',
+  'reg-type-label': 'Kategori Orang Tua',
+  'payment-title': 'Konfirmasi Pembayaran',
+  'payment-title-b': 'Konfirmasi Pembayaran',
+  'qris-label': 'Pindai QRIS untuk menyelesaikan pembayaran Anda',
+  'qris-label-b': 'Pindai QRIS untuk menyelesaikan pembayaran Anda',
   'qris-name': 'Kreativa Global School',
   'qris-name-b': 'Kreativa Global School',
-  'upload-label': 'Upload payment proof (required)',
-  'upload-label-b': 'Upload payment proof (required)',
-  'submit-btn': 'Continue',
-  'submit-btn-b': 'Continue',
-  'wa-btn': 'Whatsapp',
-  'confirm-title': 'Registration Confirmed',
-  'confirm-msg': 'Your registration details and ticket are ready.',
+  'upload-label': 'Unggah bukti pembayaran (wajib)',
+  'upload-label-b': 'Unggah bukti pembayaran (wajib)',
+  'submit-btn': 'Lanjutkan',
+  'submit-btn-b': 'Lanjutkan',
+  'wa-btn': 'WhatsApp',
+  'confirm-title': 'Pendaftaran Berhasil',
+  'confirm-msg': 'Detail pendaftaran dan tiket Anda sudah siap.',
   'footer-name': 'Global Parenting Summit 2026',
-  'footer-tagline': 'Hosted by Kreativa Global School',
+  'footer-tagline': 'Diselenggarakan oleh Kreativa Global School',
   'footer-contact': 'info@kreativaglobal.sch.id'
 };
 
@@ -66,8 +66,8 @@ function fillTemplateContent() {
     if (image && !image.getAttribute('src')) {
       image.src = src;
       image.alt = id === 'hero-img'
-        ? 'Parents attending an education summit'
-        : 'Teacher and families in a school learning session';
+        ? 'Orang tua mengikuti sesi edukasi'
+        : 'Guru dan keluarga dalam sesi belajar di sekolah';
     }
   });
 }
@@ -107,7 +107,7 @@ function hidePaymentSections(form = document) {
 
   if (form.tagName === 'FORM') {
     setPaymentFieldsEnabled(form, false);
-    setSubmitLabel(form, 'Continue');
+    setSubmitLabel(form, 'Lanjutkan');
   }
 }
 
@@ -120,7 +120,7 @@ function showPaymentSection(form, registration) {
   });
   setPaymentFieldsEnabled(form, true);
   updatePriceSummary(form);
-  setSubmitLabel(form, 'Submit Payment Proof');
+  setSubmitLabel(form, 'Kirim Bukti Pembayaran');
 
   const paymentSection = form.querySelector('#payment-a, #payment-b');
   paymentSection?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -185,7 +185,7 @@ function updatePriceSummary(form) {
   }
 
   priceLabel.textContent = formatCurrency(appConfig.ticketPrice);
-  quantityLabel.textContent = attendeeCount ? `${attendeeCount} ticket(s)` : '-';
+    quantityLabel.textContent = attendeeCount ? `${attendeeCount} tiket` : '-';
   totalLabel.textContent = attendeeCount ? formatCurrency(attendeeCount * appConfig.ticketPrice) : '-';
 }
 
@@ -291,7 +291,7 @@ function updatePaymentProofPreview(input) {
   if (file.type.startsWith('image/')) {
     const imageUrl = URL.createObjectURL(file);
     preview.innerHTML = `
-      <img src="${imageUrl}" alt="Selected payment proof" class="upload-preview-image">
+      <img src="${imageUrl}" alt="Bukti pembayaran yang dipilih" class="upload-preview-image">
       <div class="upload-preview-meta">
         <strong>${file.name}</strong>
         <span>${fileSize}</span>
@@ -320,7 +320,7 @@ function readFileAsDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(new Error('Failed to read payment proof file.'));
+    reader.onerror = () => reject(new Error('Gagal membaca file bukti pembayaran.'));
     reader.readAsDataURL(file);
   });
 }
@@ -371,7 +371,7 @@ async function compressImagePaymentProof(file) {
   }
 
   if (compressedDataUrl.length > maxPaymentProofDataUrlLength) {
-    throw new Error('Payment proof image is too large. Please upload a smaller screenshot or photo.');
+    throw new Error('Gambar bukti pembayaran terlalu besar. Mohon unggah screenshot atau foto yang lebih kecil.');
   }
 
   return {
@@ -395,12 +395,12 @@ async function preparePaymentProof(file) {
   }
 
   if (file.size > maxDirectUploadBytes) {
-    throw new Error('PDF payment proof is too large. Maximum PDF size is 2 MB.');
+    throw new Error('PDF bukti pembayaran terlalu besar. Ukuran maksimum PDF adalah 2 MB.');
   }
 
   const dataUrl = await readFileAsDataUrl(file);
   if (dataUrl.length > maxPaymentProofDataUrlLength) {
-    throw new Error('Payment proof file is too large. Please upload a smaller file.');
+    throw new Error('File bukti pembayaran terlalu besar. Mohon unggah file yang lebih kecil.');
   }
 
   return {
@@ -411,10 +411,27 @@ async function preparePaymentProof(file) {
 }
 
 function getFriendlyErrorMessage(error) {
-  const message = String(error?.message || error || 'Registration failed.');
+  const message = String(error?.message || error || 'Pendaftaran gagal.');
+  const translations = {
+    'Parent category is required.': 'Kategori orang tua wajib dipilih.',
+    'Student level, student name, parent name, phone, and email are required.': 'Jenjang siswa, nama siswa, nama orang tua, nomor telepon, dan email wajib diisi.',
+    'Phone number must contain numbers only.': 'Nomor telepon hanya boleh berisi angka.',
+    'Email address is not valid.': 'Alamat email tidak valid.',
+    'Number of attendees must be 1 or 2.': 'Jumlah kehadiran harus 1 atau 2.',
+    'Lunch box reservation must match number of attendees.': 'Reservasi kotak makan harus sama dengan jumlah kehadiran.',
+    'Payment proof is required.': 'Bukti pembayaran wajib diunggah.',
+    'Payment proof upload is only available for verified registrations.': 'Unggah bukti pembayaran hanya tersedia untuk pendaftaran yang sudah terverifikasi.',
+    'Registration not found.': 'Data pendaftaran tidak ditemukan.',
+    'Ticket quota is full.': 'Kuota tiket sudah penuh.',
+    'Registration failed.': 'Pendaftaran gagal.'
+  };
 
   if (message.includes('expected pattern')) {
-    return 'Upload failed because the payment proof file is too large for this browser. Please upload a smaller image.';
+    return 'Unggahan gagal karena file bukti pembayaran terlalu besar untuk browser ini. Mohon unggah gambar yang lebih kecil.';
+  }
+
+  if (translations[message]) {
+    return translations[message];
   }
 
   return message;
@@ -435,7 +452,7 @@ function validatePaymentProofSelection(form) {
     window.setTimeout(() => uploadZone.classList.remove('dragover'), 1400);
   }
 
-  alert('Payment proof is required. Please upload JPG, PNG, or PDF.');
+  alert('Bukti pembayaran wajib diunggah. Mohon unggah JPG, PNG, atau PDF.');
   return false;
 }
 
@@ -447,13 +464,13 @@ function validateContactFields(form) {
 
   if (!/^\d+$/.test(phone)) {
     phoneInput?.focus();
-    alert('Phone number must contain numbers only.');
+    alert('Nomor telepon hanya boleh berisi angka.');
     return false;
   }
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     emailInput?.focus();
-    alert('Please enter a valid email address.');
+    alert('Mohon masukkan alamat email yang valid.');
     return false;
   }
 
@@ -503,7 +520,7 @@ async function postRegistrationPayload(payload) {
   const result = await response.json();
 
   if (!response.ok || result.success === false) {
-    throw new Error(result.error || result.message || 'Registration failed.');
+    throw new Error(result.error || result.message || 'Pendaftaran gagal.');
   }
 
   return result;
@@ -534,7 +551,7 @@ function showTicketConfirmation(registration) {
 
   document.getElementById('reg-id').textContent = registration.registrationId;
   document.getElementById('seat-display').textContent = registration.seatNumber || generatedSeatNumber || '-';
-  document.getElementById('attendee-display').textContent = `${registration.attendeeCount} attendee(s)`;
+  document.getElementById('attendee-display').textContent = `${registration.attendeeCount} peserta`;
   document.getElementById('total-display').textContent = formatCurrency(registration.totalAmount);
   document.getElementById('confirmation').classList.remove('hidden');
   loadConfig();
@@ -551,7 +568,7 @@ async function showConfirmation(event) {
   const isPaymentStep = form.dataset.verificationStatus === 'verified' && form.dataset.registrationId;
 
   if (attendeeCount !== lunchBoxCount) {
-    alert('Lunch box reservation must match number of attendees.');
+    alert('Reservasi lunch box harus sama dengan jumlah kehadiran.');
     return;
   }
 
@@ -564,7 +581,7 @@ async function showConfirmation(event) {
   }
 
   submitButton.disabled = true;
-  submitButton.textContent = isPaymentStep ? 'Saving...' : 'Checking...';
+  submitButton.textContent = isPaymentStep ? 'Menyimpan...' : 'Memeriksa...';
 
   try {
     if (isPaymentStep) {
@@ -593,7 +610,7 @@ async function showConfirmation(event) {
   } finally {
     submitButton.disabled = false;
     if (form.dataset.verificationStatus === 'verified' && form.dataset.registrationId) {
-      submitButton.textContent = 'Submit Payment Proof';
+      submitButton.textContent = 'Kirim Bukti Pembayaran';
     } else {
       submitButton.textContent = originalLabel;
     }
@@ -621,25 +638,25 @@ function downloadTicket() {
 
   ctx.fillStyle = '#1a2744';
   ctx.font = 'bold 18px Poppins, sans-serif';
-  ctx.fillText('Registration ID', 300, 150);
+  ctx.fillText('ID Pendaftaran', 300, 150);
   ctx.font = 'bold 24px Poppins, sans-serif';
   ctx.fillText(document.getElementById('reg-id').textContent, 300, 180);
 
   ctx.font = 'bold 14px Poppins, sans-serif';
-  ctx.fillText('Seat Number(s)', 300, 210);
+  ctx.fillText('Nomor Kursi', 300, 210);
   ctx.font = 'bold 18px Poppins, sans-serif';
   ctx.fillText(document.getElementById('seat-display').textContent, 300, 235);
 
   ctx.font = 'bold 14px Poppins, sans-serif';
-  ctx.fillText('Total Payment', 300, 265);
+  ctx.fillText('Total Pembayaran', 300, 265);
   ctx.font = 'bold 18px Poppins, sans-serif';
   ctx.fillText(document.getElementById('total-display').textContent, 300, 290);
 
   ctx.fillStyle = '#4a5568';
   ctx.font = '14px Poppins, sans-serif';
-  ctx.fillText('Date: Saturday, 15 August 2026', 300, 330);
-  ctx.fillText('Time: 08:00 - 12:00 WIB', 300, 360);
-  ctx.fillText('Venue: Kreativa Global School Auditorium', 300, 390);
+  ctx.fillText('Tanggal: Sabtu, 15 Agustus 2026', 300, 330);
+  ctx.fillText('Waktu: 08:00 - 12:00 WIB', 300, 360);
+  ctx.fillText('Tempat: Auditorium Kreativa Global School', 300, 390);
 
   ctx.fillStyle = '#1a2744';
   ctx.font = 'bold 16px Poppins, sans-serif';
@@ -650,7 +667,7 @@ function downloadTicket() {
 
   const link = document.createElement('a');
   link.href = canvas.toDataURL('image/png');
-  link.download = document.getElementById('reg-id').textContent + '_ticket.png';
+  link.download = document.getElementById('reg-id').textContent + '_tiket.png';
   link.click();
 }
 
@@ -686,7 +703,7 @@ function setupContactValidation() {
   document.querySelectorAll('[name="phone"]').forEach(input => {
     input.setAttribute('inputmode', 'numeric');
     input.setAttribute('pattern', '[0-9]*');
-    input.setAttribute('title', 'Phone number must contain numbers only.');
+    input.setAttribute('title', 'Nomor telepon hanya boleh berisi angka.');
 
     input.addEventListener('input', () => {
       input.value = input.value.replace(/\D/g, '');
@@ -719,3 +736,4 @@ window.showConfirmation = showConfirmation;
 window.downloadTicket = downloadTicket;
 
 document.addEventListener('DOMContentLoaded', initPage);
+
