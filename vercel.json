@@ -8,5 +8,19 @@
     "api/page.js": {
       "includeFiles": "dist/**"
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/api/page"
+    },
+    {
+      "source": "/admin",
+      "destination": "/api/page?file=admin"
+    },
+    {
+      "source": "/admin.html",
+      "destination": "/api/page?file=admin"
+    }
+  ]
 }
