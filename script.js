@@ -3,8 +3,8 @@
   'hero-title': 'Global Parenting Summit 2026',
   'hero-subtitle': '',
   'event-date': 'Sabtu, 20 Juni 2026',
-  'event-time': '08:00 - 14:00 WIB',
-  'event-venue': 'Exibition Hall, Summarecon Mall Bandung',
+  'event-time': '08:00 - 16:00 WIB',
+  'event-venue': 'Exibition Hall, Summarecon Bandung',
   'hero-cta': 'Daftar Sekarang',
   'about-title': 'APA ITU GLOBAL PARENTING SUMMIT?',
   'about-desc-1': 'Global Parenting Summit adalah forum edukasi tahunan yang diinisiasi oleh Kreativa Global School untuk mendukung orang tua dalam menghadapi tantangan mendampingi anak di dunia yang terus berubah dengan cepat.',
@@ -666,9 +666,9 @@ function downloadTicket() {
 
   ctx.fillStyle = '#4a5568';
   ctx.font = '14px Poppins, sans-serif';
-  ctx.fillText('Tanggal: Sabtu, 15 Agustus 2026', 300, 330);
-  ctx.fillText('Waktu: 08:00 - 12:00 WIB', 300, 360);
-  ctx.fillText('Tempat: Auditorium Kreativa Global School', 300, 390);
+  ctx.fillText('Tanggal: Sabtu, 20 Juni 2026', 300, 330);
+  ctx.fillText('Waktu: 08:00 - 16:00 WIB', 300, 360);
+  ctx.fillText('Tempat: Exibition Hall, Summarecon Bandung', 300, 390);
 
   ctx.fillStyle = '#1a2744';
   ctx.font = 'bold 16px Poppins, sans-serif';
