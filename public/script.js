@@ -47,6 +47,12 @@ const maxDirectUploadBytes = 2_000_000;
 const maxPaymentProofDataUrlLength = 2_800_000;
 const maxPaymentProofImageDimension = 1400;
 
+function normalizeVisibleUrl() {
+  if (window.location.pathname.endsWith('/index.html')) {
+    window.history.replaceState({}, '', window.location.pathname.replace(/\/index\.html$/, '/') + window.location.search + window.location.hash);
+  }
+}
+
 function fillTemplateContent() {
   Object.entries(templateContent).forEach(([id, value]) => {
     const element = document.querySelector(`[data-template-id="${id}"]`);
@@ -693,6 +699,7 @@ function setupContactValidation() {
 }
 
 function initPage() {
+  normalizeVisibleUrl();
   fillTemplateContent();
   document.getElementById('parent-type').addEventListener('change', handleParentTypeChange);
   setupAttendanceLunchSync();

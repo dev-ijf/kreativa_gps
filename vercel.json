@@ -8,32 +8,25 @@
       "includeFiles": "dist/**"
     }
   },
-  "routes": [
+  "redirects": [
     {
-      "src": "^/$",
-      "dest": "/api/page"
+      "source": "/",
+      "destination": "/index.html",
+      "permanent": false
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/index.html",
+      "destination": "/index.html"
     },
     {
-      "src": "^/index\\.html$",
-      "status": 302,
-      "headers": {
-        "Location": "/"
-      }
+      "source": "/admin",
+      "destination": "/admin.html"
     },
     {
-      "src": "^/admin/?$",
-      "dest": "/api/page?file=admin"
-    },
-    {
-      "src": "^/admin\\.html$",
-      "dest": "/api/page?file=admin"
-    },
-    {
-      "handle": "filesystem"
-    },
-    {
-      "src": "^/(.*)$",
-      "dest": "/$1"
+      "source": "/admin.html",
+      "destination": "/admin.html"
     }
   ]
 }
