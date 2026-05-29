@@ -34,7 +34,7 @@
 
 const imageSources = {
   'hero-img': 'assets/bg-1.jpeg',
-  'about-img': 'assets/desc1.jpeg'
+  'about-img': 'assets/desc2.jpeg'
 };
 
 let generatedSeatNumber = '';
