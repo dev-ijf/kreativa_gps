@@ -17,8 +17,19 @@ const port = Number(process.env.PORT || 3000);
 const ticketPrice = normalizeCurrency(process.env.TICKET_PRICE || 0);
 const ticketQuota = normalizeQuota(process.env.TICKET_QUOTA || 800);
 const usePostgres = Boolean(
-  process.env.DATABASE_URL || process.env.PGHOST || process.env.PGDATABASE
+  process.env.DATABASE_URL
+    || process.env.POSTGRES_URL
+    || process.env.POSTGRES_URL_NON_POOLING
+    || process.env.DATABASE_URL_UNPOOLED
+    || process.env.PGHOST
+    || process.env.PGDATABASE
 );
+
+const defaultEligibleStudents = [
+  { id: 1, studentName: 'Ahmad Zaki', parentStatus: 'existing_parent', grade: 'P1' },
+  { id: 2, studentName: 'Aisha Nabila', parentStatus: 'existing_parent', grade: 'K2' },
+  { id: 3, studentName: 'Muhammad Arkan', parentStatus: 'waiting_list_parent', grade: 'P1' }
+];
 
 const contentTypes = {
   '.html': 'text/html; charset=utf-8',
@@ -65,6 +76,46 @@ const columnMap = {
 function normalizeCurrency(value) {
   const number = Number.parseInt(value, 10);
   return Number.isFinite(number) && number >= 0 ? number : 0;
+}
+
+function getDatabaseUrl() {
+  return process.env.DATABASE_URL
+    || process.env.POSTGRES_URL
+    || process.env.POSTGRES_URL_NON_POOLING
+    || process.env.DATABASE_URL_UNPOOLED
+    || '';
+}
+
+function shouldUseSsl(connectionString = '') {
+  const host = process.env.PGHOST || process.env.POSTGRES_HOST || '';
+  return process.env.PGSSLMODE === 'require'
+    || connectionString.includes('sslmode=require')
+    || connectionString.includes('neon.tech')
+    || host.includes('neon.tech');
+}
+
+function createPoolConfig() {
+  const connectionString = getDatabaseUrl();
+
+  if (connectionString) {
+    return shouldUseSsl(connectionString)
+      ? { connectionString, ssl: { rejectUnauthorized: false } }
+      : { connectionString };
+  }
+
+  const config = {
+    host: process.env.PGHOST || process.env.POSTGRES_HOST || 'localhost',
+    port: Number(process.env.PGPORT || process.env.POSTGRES_PORT || 5432),
+    database: process.env.PGDATABASE || process.env.POSTGRES_DATABASE,
+    user: process.env.PGUSER || process.env.POSTGRES_USER,
+    password: process.env.PGPASSWORD || process.env.POSTGRES_PASSWORD
+  };
+
+  if (shouldUseSsl()) {
+    config.ssl = { rejectUnauthorized: false };
+  }
+
+  return config;
 }
 
 function normalizeQuota(value) {
@@ -114,6 +165,17 @@ async function writeStore(store) {
   await writeFile(dataFile, JSON.stringify(store, null, 2));
 }
 
+function getJsonEligibleStudents(store) {
+  const rows = Array.isArray(store.eligibleStudents) ? store.eligibleStudents : defaultEligibleStudents;
+
+  return rows.map(row => ({
+    id: row.id,
+    studentName: row.studentName || row.student_name || '',
+    parentStatus: row.parentStatus || row.parent_status || '',
+    grade: row.grade || ''
+  }));
+}
+
 function sendJson(response, statusCode, payload) {
   response.writeHead(statusCode, {
     'Content-Type': 'application/json; charset=utf-8',
@@ -145,6 +207,43 @@ async function readJsonBody(request) {
 
 function normalizeText(value) {
   return String(value || '').trim();
+}
+
+function normalizeName(name) {
+  if (!name) {
+    return '';
+  }
+
+  return name
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+function calculateNameSimilarity(nameA, nameB) {
+  const a = normalizeName(nameA);
+  const b = normalizeName(nameB);
+
+  if (!a || !b) {
+    return 0;
+  }
+
+  if (a === b) {
+    return 1;
+  }
+
+  const wordsA = new Set(a.split(' '));
+  const wordsB = new Set(b.split(' '));
+  let matchCount = 0;
+
+  wordsA.forEach(word => {
+    if (wordsB.has(word)) {
+      matchCount += 1;
+    }
+  });
+
+  return matchCount / Math.max(wordsA.size, wordsB.size);
 }
 
 function normalizeCount(value, fallback = 0) {
@@ -273,8 +372,6 @@ function validateRegistration(payload) {
   const parentName = normalizeText(payload.parentName);
   const phone = normalizeText(payload.phone);
   const email = normalizeText(payload.email);
-  const paymentProofFilename = normalizeText(payload.paymentProofFilename);
-  const paymentProofData = normalizeText(payload.paymentProofData);
   const { attendeeCount, lunchBoxCount } = normalizeRegistrationCounts(payload);
 
   if (!['existing', 'waitlist'].includes(category)) {
@@ -285,12 +382,12 @@ function validateRegistration(payload) {
     return 'Student level, student name, parent name, phone, and email are required.';
   }
 
-  if (!email.includes('@')) {
-    return 'Email address is not valid.';
+  if (!/^\d+$/.test(phone)) {
+    return 'Phone number must contain numbers only.';
   }
 
-  if (!paymentProofFilename || !paymentProofData) {
-    return 'Payment proof is required.';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return 'Email address is not valid.';
   }
 
   if (attendeeCount < 1 || attendeeCount > 2) {
@@ -302,6 +399,60 @@ function validateRegistration(payload) {
   }
 
   return '';
+}
+
+function validatePaymentPayload(payload) {
+  const registrationId = normalizeText(payload.registrationId || payload.registration_id || payload.id);
+  const paymentProofFilename = normalizeText(payload.paymentProofFilename);
+  const paymentProofData = normalizeText(payload.paymentProofData);
+
+  if (!registrationId) {
+    return 'Registration ID is required.';
+  }
+
+  if (!paymentProofFilename || !paymentProofData) {
+    return 'Payment proof is required.';
+  }
+
+  return '';
+}
+
+function getParentStatus(category) {
+  const normalizedCategory = normalizeText(category);
+
+  if (normalizedCategory === 'existing') {
+    return 'existing_parent';
+  }
+
+  if (normalizedCategory === 'waitlist') {
+    return 'waiting_list_parent';
+  }
+
+  return 'not_registered';
+}
+
+function getVerificationMessage(status) {
+  if (status === 'verified') {
+    return 'Student name verified.';
+  }
+
+  if (status === 'need_review') {
+    return 'Student name needs manual review.';
+  }
+
+  return 'Student name could not be verified.';
+}
+
+function getVerificationNextStep(status) {
+  if (status === 'verified') {
+    return 'show_payment';
+  }
+
+  if (status === 'need_review') {
+    return 'show_review';
+  }
+
+  return 'show_interest_message';
 }
 
 function createRegistrationId(existingRows) {
@@ -381,6 +532,63 @@ function toRegistration(payload, existingRows) {
   };
 }
 
+async function verifyJsonStudentName(store, { studentName, parentStatus }) {
+  const normalizedInputName = normalizeName(studentName);
+
+  if (!normalizedInputName) {
+    return {
+      status: 'not_verified',
+      matchedStudentId: null,
+      notes: 'Student name is empty.'
+    };
+  }
+
+  if (parentStatus === 'not_registered') {
+    return {
+      status: 'not_verified',
+      matchedStudentId: null,
+      notes: 'User selected child has not registered yet.'
+    };
+  }
+
+  const eligibleRows = getJsonEligibleStudents(store)
+    .filter(row => row.parentStatus === parentStatus);
+
+  let bestMatch = null;
+  let bestSimilarity = 0;
+
+  eligibleRows.forEach(student => {
+    const similarity = calculateNameSimilarity(student.studentName, normalizedInputName);
+
+    if (similarity > bestSimilarity) {
+      bestSimilarity = similarity;
+      bestMatch = student;
+    }
+  });
+
+  if (bestSimilarity >= 0.9) {
+    return {
+      status: 'verified',
+      matchedStudentId: bestMatch.id,
+      notes: `Verified by student name. Similarity: ${bestSimilarity}`
+    };
+  }
+
+  if (bestSimilarity >= 0.6) {
+    return {
+      status: 'need_review',
+      matchedStudentId: bestMatch ? bestMatch.id : null,
+      notes: `Student name needs review. Similarity: ${bestSimilarity}`
+    };
+  }
+
+  return {
+    status: 'not_verified',
+    matchedStudentId: null,
+    notes: `Student name not found. Best similarity: ${bestSimilarity}`
+  };
+}
+
 function filterRegistrations(rows, searchParams) {
   const search = normalizeText(searchParams.get('search')).toLowerCase();
   const category = normalizeText(searchParams.get('category'));
@@ -422,6 +630,10 @@ function toCamelRow(row) {
     totalAmount: Number(row.total_amount || 0),
     paymentStatus: row.payment_status,
     paymentProofFilename: row.payment_proof_filename || '',
+    parentStatus: row.parent_status || '',
+    verificationStatus: row.verification_status || 'not_verified',
+    matchedStudentId: row.matched_student_id || null,
+    verificationNotes: row.verification_notes || '',
     status: row.status,
     notes: row.notes || '',
     checkedInAt: row.checked_in_at || '',
@@ -464,18 +676,113 @@ async function createJsonRepository() {
 
     async create(payload) {
       const store = await readStore();
+      const category = normalizeText(payload.category || payload.parentCategory);
+      const parentStatus = getParentStatus(category);
       const { attendeeCount } = normalizeRegistrationCounts(payload);
-      const usedSeats = getUsedSeatCount(store.registrations);
-
-      if (usedSeats + attendeeCount > ticketQuota) {
-        throw new Error('Ticket quota is full.');
-      }
-
-      const registration = toRegistration(payload, store.registrations);
-      registration.paymentProofFilename = await storePaymentProof(payload, registration.registrationId);
+      const { lunchBoxCount } = normalizeRegistrationCounts(payload);
+      const verification = await verifyJsonStudentName(store, {
+        studentName: payload.studentName,
+        parentStatus
+      });
+      const now = new Date().toISOString();
+      const registration = {
+        id: randomUUID(),
+        registrationId: createRegistrationId(store.registrations),
+        parentCategory: category,
+        parentStatus,
+        waitingListStatus: normalizeText(payload.waitingListStatus),
+        studentLevel: normalizeText(payload.studentLevel),
+        studentName: normalizeText(payload.studentName),
+        parentName: normalizeText(payload.parentName),
+        phone: normalizeText(payload.phone),
+        email: normalizeText(payload.email),
+        attendeeCount,
+        lunchBoxCount,
+        seatNumber: '',
+        ticketPrice,
+        totalAmount: attendeeCount * ticketPrice,
+        paymentStatus: 'pending',
+        paymentProofFilename: '',
+        verificationStatus: verification.status,
+        matchedStudentId: verification.matchedStudentId,
+        verificationNotes: verification.notes,
+        status: 'confirmed',
+        notes: '',
+        checkedInAt: '',
+        createdAt: now,
+        updatedAt: now
+      };
       store.registrations.push(registration);
       await writeStore(store);
-      return registration;
+
+      return {
+        success: true,
+        status: verification.status,
+        registration_id: registration.id,
+        registrationId: registration.registrationId,
+        message: getVerificationMessage(verification.status),
+        next_step: getVerificationNextStep(verification.status),
+        registration
+      };
+    },
+
+    async submitPaymentProof(payload) {
+      const validationError = validatePaymentPayload(payload);
+      if (validationError) {
+        const error = new Error(validationError);
+        error.statusCode = 400;
+        throw error;
+      }
+
+      const store = await readStore();
+      const registrationId = normalizeText(payload.registrationId || payload.registration_id || payload.id);
+      const rowIndex = store.registrations.findIndex(row => row.id === registrationId || row.registrationId === registrationId);
+
+      if (rowIndex === -1) {
+        const error = new Error('Registration not found.');
+        error.statusCode = 404;
+        throw error;
+      }
+
+      const current = store.registrations[rowIndex];
+
+      if (current.verificationStatus !== 'verified') {
+        const error = new Error('Payment proof upload is only available for verified registrations.');
+        error.statusCode = 403;
+        throw error;
+      }
+
+      const attendeeCount = normalizeCount(current.attendeeCount, 1);
+      const existingRows = store.registrations.filter(row => row.id !== current.id);
+
+      if (!normalizeText(current.seatNumber) && getUsedSeatCount(existingRows) + attendeeCount > ticketQuota) {
+        const error = new Error('Ticket quota is full.');
+        error.statusCode = 400;
+        throw error;
+      }
+
+      const next = {
+        ...current,
+        seatNumber: normalizeText(current.seatNumber) || createSeatNumbers(attendeeCount, existingRows),
+        ticketPrice,
+        totalAmount: attendeeCount * ticketPrice,
+        paymentStatus: 'pending',
+        paymentProofFilename: await storePaymentProof(payload, current.registrationId),
+        updatedAt: new Date().toISOString()
+      };
+
+      store.registrations[rowIndex] = next;
+      await writeStore(store);
+
+      return {
+        success: true,
+        status: next.verificationStatus,
+        registration_id: next.id,
+        registrationId: next.registrationId,
+        message: 'Payment proof uploaded.',
+        next_step: 'show_confirmation',
+        registration: next
+      };
     },
 
     async get(id) {
@@ -533,17 +840,62 @@ async function createPostgresRepository() {
     throw new Error('Package "pg" belum terinstall. Jalankan: npm install pg');
   }
 
-  const pool = new Pool(
-    process.env.DATABASE_URL
-      ? { connectionString: process.env.DATABASE_URL }
-      : {
-          host: process.env.PGHOST || 'localhost',
-          port: Number(process.env.PGPORT || 5432),
-          database: process.env.PGDATABASE,
-          user: process.env.PGUSER,
-          password: String(process.env.PGPASSWORD || '')
-        }
-  );
+  const pool = new Pool(createPoolConfig());
+
+  async function verifyStudentName({ studentName, parentStatus }) {
+    const normalizedInputName = normalizeName(studentName);
+
+    if (!normalizedInputName) {
+      return { status: 'not_verified', matchedStudentId: null, notes: 'Student name is empty.' };
+    }
+
+    if (parentStatus === 'not_registered') {
+      return {
+        status: 'not_verified',
+        matchedStudentId: null,
+        notes: 'User selected child has not registered yet.'
+      };
+    }
+
+    const result = await pool.query(
+      `SELECT id, student_name, parent_status, grade
+       FROM eligible_students
+       WHERE parent_status = $1`,
+      [parentStatus]
+    );
+    let bestMatch = null;
+    let bestSimilarity = 0;
+
+    result.rows.forEach(student => {
+      const similarity = calculateNameSimilarity(student.student_name, normalizedInputName);
+      if (similarity > bestSimilarity) {
+        bestSimilarity = similarity;
+        bestMatch = student;
+      }
+    });
+
+    if (bestSimilarity >= 0.9) {
+      return {
+        status: 'verified',
+        matchedStudentId: bestMatch.id,
+        notes: `Verified by student name. Similarity: ${bestSimilarity.toFixed(2)}`
+      };
+    }
+
+    if (bestSimilarity >= 0.6) {
+      return {
+        status: 'need_review',
+        matchedStudentId: bestMatch ? bestMatch.id : null,
+        notes: `Student name needs review. Similarity: ${bestSimilarity.toFixed(2)}`
+      };
+    }
+
+    return {
+      status: 'not_verified',
+      matchedStudentId: null,
+      notes: `Student name not found. Best similarity: ${bestSimilarity.toFixed(2)}`
+    };
+  }
 
   return {
     async health() {
@@ -553,7 +905,7 @@ async function createPostgresRepository() {
     },
 
     async config() {
-      const result = await pool.query('SELECT seat_number FROM registrations');
+      const result = await pool.query('SELECT seat_number FROM registrations WHERE seat_number IS NOT NULL');
       const rows = result.rows.map(row => ({ seatNumber: row.seat_number }));
       const usedSeats = getUsedSeatCount(rows);
       return {
@@ -611,32 +963,22 @@ async function createPostgresRepository() {
 
     async create(payload) {
       const category = normalizeText(payload.category || payload.parentCategory);
+      const parentStatus = getParentStatus(category);
       const { attendeeCount, lunchBoxCount } = normalizeRegistrationCounts(payload);
+      const verification = await verifyStudentName({
+        studentName: payload.studentName,
+        parentStatus
+      });
       const nextResult = await pool.query(
         `SELECT COALESCE(MAX(id), 0) + 1 AS next_id FROM registrations`
       );
-      const existingSeatResult = await pool.query(
-        `SELECT seat_number FROM registrations`
-      );
       const nextId = Number(nextResult.rows[0].next_id);
       const registrationId = `GPS-2026-${String(nextId).padStart(4, '0')}`;
-      const usedSeats = getUsedSeatCount(
-        existingSeatResult.rows.map(row => ({ seatNumber: row.seat_number }))
-      );
-
-      if (usedSeats + attendeeCount > ticketQuota) {
-        throw new Error('Ticket quota is full.');
-      }
-
-      const seats = createSeatNumbers(
-        attendeeCount,
-        existingSeatResult.rows.map(row => ({ seatNumber: row.seat_number }))
-      );
-      const proof = parsePaymentProofForDatabase(payload, registrationId);
 
       const values = [
         registrationId,
         category,
+        parentStatus,
         normalizeText(payload.waitingListStatus),
         normalizeText(payload.studentLevel),
         normalizeText(payload.studentName),
@@ -645,10 +987,9 @@ async function createPostgresRepository() {
         normalizeText(payload.email),
         attendeeCount,
         lunchBoxCount,
-        seats,
-        proof.filename,
-        proof.mimeType,
-        proof.base64Data,
+        verification.status,
+        verification.matchedStudentId,
+        verification.notes,
         ticketPrice,
         attendeeCount * ticketPrice
       ];
@@ -657,6 +998,7 @@ async function createPostgresRepository() {
         `INSERT INTO registrations (
           registration_id,
           parent_category,
+          parent_status,
           waiting_list_status,
           student_level,
           student_name,
@@ -665,21 +1007,112 @@ async function createPostgresRepository() {
           email,
           attendee_count,
           lunch_box_count,
-          seat_number,
-          payment_proof_filename,
-          payment_proof_mime_type,
-          payment_proof_data,
+          verification_status,
+          matched_student_id,
+          verification_notes,
           ticket_price,
           total_amount
         ) VALUES (
-          $1, $2, NULLIF($3, ''), $4, $5, $6, $7, $8, $9, $10, $11,
-          NULLIF($12, ''), NULLIF($13, ''), NULLIF($14, ''), $15, $16
+          $1, $2, $3, NULLIF($4, ''), $5, $6, $7, $8, $9, $10,
+          $11, $12, $13, $14, $15, $16
         )
         RETURNING *`,
         values
       );
 
-      return toCamelRow(result.rows[0]);
+      const registration = toCamelRow(result.rows[0]);
+
+      return {
+        success: true,
+        status: verification.status,
+        registration_id: registration.id,
+        registrationId: registration.registrationId,
+        message: getVerificationMessage(verification.status),
+        next_step: getVerificationNextStep(verification.status),
+        registration
+      };
+    },
+
+    async submitPaymentProof(payload) {
+      const validationError = validatePaymentPayload(payload);
+      if (validationError) {
+        const error = new Error(validationError);
+        error.statusCode = 400;
+        throw error;
+      }
+
+      const registrationId = normalizeText(payload.registrationId || payload.registration_id || payload.id);
+      const currentResult = await pool.query(
+        `SELECT * FROM registrations WHERE id::text = $1 OR registration_id = $1 LIMIT 1`,
+        [registrationId]
+      );
+      const current = currentResult.rows[0];
+
+      if (!current) {
+        const error = new Error('Registration not found.');
+        error.statusCode = 404;
+        throw error;
+      }
+
+      if (current.verification_status !== 'verified') {
+        const error = new Error('Payment proof upload is only available for verified registrations.');
+        error.statusCode = 403;
+        throw error;
+      }
+
+      const attendeeCount = normalizeCount(current.attendee_count, 1);
+      let seats = normalizeText(current.seat_number);
+
+      if (!seats) {
+        const existingSeatResult = await pool.query(
+          `SELECT seat_number FROM registrations WHERE id <> $1 AND seat_number IS NOT NULL`,
+          [current.id]
+        );
+        const existingSeats = existingSeatResult.rows.map(row => ({ seatNumber: row.seat_number }));
+        const usedSeats = getUsedSeatCount(existingSeats);
+
+        if (usedSeats + attendeeCount > ticketQuota) {
+          const error = new Error('Ticket quota is full.');
+          error.statusCode = 400;
+          throw error;
+        }
+
+        seats = createSeatNumbers(attendeeCount, existingSeats);
+      }
+
+      const proof = parsePaymentProofForDatabase(payload, current.registration_id);
+      const result = await pool.query(
+        `UPDATE registrations
+         SET seat_number = $1,
+             payment_proof_filename = NULLIF($2, ''),
+             payment_proof_mime_type = NULLIF($3, ''),
+             payment_proof_data = NULLIF($4, ''),
+             ticket_price = $5,
+             total_amount = $6,
+             payment_status = 'pending'
+         WHERE id = $7
+         RETURNING *`,
+        [
+          seats,
+          proof.filename,
+          proof.mimeType,
+          proof.base64Data,
+          ticketPrice,
+          attendeeCount * ticketPrice,
+          current.id
+        ]
+      );
+      const registration = toCamelRow(result.rows[0]);
+
+      return {
+        success: true,
+        status: registration.verificationStatus,
+        registration_id: registration.id,
+        registrationId: registration.registrationId,
+        message: 'Payment proof uploaded.',
+        next_step: 'show_confirmation',
+        registration
+      };
     },
 
     async get(id) {
@@ -777,6 +1210,21 @@ async function handleApi(request, response, url) {
 
   if (route === '/api/registrations' && request.method === 'POST') {
     const payload = await readJsonBody(request);
+    const action = normalizeText(payload.action || payload.step || 'verify');
+
+    if (action === 'payment') {
+      const validationError = validatePaymentPayload(payload);
+
+      if (validationError) {
+        sendJson(response, 400, { error: validationError });
+        return;
+      }
+
+      const result = await repository.submitPaymentProof(payload);
+      sendJson(response, 200, result);
+      return;
+    }
+
     const validationError = validateRegistration(payload);
 
     if (validationError) {
@@ -784,7 +1232,8 @@ async function handleApi(request, response, url) {
       return;
     }
 
-    sendJson(response, 201, { registration: await repository.create(payload) });
+    const result = await repository.create(payload);
+    sendJson(response, 201, result);
     return;
   }
 
@@ -916,7 +1365,7 @@ const server = createServer(async (request, response) => {
 
     await serveStatic(request, response, url);
   } catch (error) {
-    sendJson(response, 500, { error: error.message || 'Server error.' });
+    sendJson(response, error.statusCode || 500, { error: error.message || 'Server error.' });
   }
 });
 

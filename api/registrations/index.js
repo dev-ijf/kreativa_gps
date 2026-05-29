@@ -3,7 +3,8 @@ import {
   handleError,
   listRegistrations,
   readJsonBody,
-  sendJson
+  sendJson,
+  submitPaymentProof
 } from '../../lib/repository.js';
 
 export default async function handler(request, response) {
@@ -18,9 +19,11 @@ export default async function handler(request, response) {
 
     if (request.method === 'POST') {
       const payload = await readJsonBody(request);
-      sendJson(response, 201, {
-        registration: await createRegistration(payload)
-      });
+      const action = String(payload.action || payload.step || 'verify');
+      const result = action === 'payment'
+        ? await submitPaymentProof(payload)
+        : await createRegistration(payload);
+      sendJson(response, action === 'payment' ? 200 : 201, result);
       return;
     }
 

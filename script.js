@@ -12,6 +12,7 @@ const templateContent = {
   'about-desc-3': 'Through meaningful discussions and shared insights, Global Parenting Summit encourages parents to take an active role in guiding their children’s development while strengthening collaboration between families and schools.',
   'reg-title': 'Registration',
   'reg-subtitle': 'Choose your parent category to see the correct registration flow.',
+  'verification-note': 'Registration will be verified based on student name in school records before payment can be completed.',
   'reg-type-label': 'Parent Category',
   'payment-title': 'Payment Confirmation',
   'payment-title-b': 'Payment Confirmation',
@@ -21,11 +22,11 @@ const templateContent = {
   'qris-name-b': 'Kreativa Global School',
   'upload-label': 'Upload payment proof (required)',
   'upload-label-b': 'Upload payment proof (required)',
-  'submit-btn': 'Submit Registration',
-  'submit-btn-b': 'Submit Registration',
+  'submit-btn': 'Continue',
+  'submit-btn-b': 'Continue',
   'wa-btn': 'Whatsapp',
   'confirm-title': 'Registration Confirmed',
-  'confirm-msg': 'Your registration details and attendance QR code are ready.',
+  'confirm-msg': 'Your registration details and ticket are ready.',
   'footer-name': 'Global Parenting Summit 2026',
   'footer-tagline': 'Hosted by Kreativa Global School',
   'footer-contact': 'info@kreativaglobal.sch.id'
@@ -69,7 +70,62 @@ function resetFlows() {
   ['flow-a', 'flow-b', 'flow-c'].forEach(id => {
     document.getElementById(id).classList.add('hidden');
   });
+  hideResultSections();
+  resetVerificationState();
   generatedSeatNumber = '';
+}
+
+function hideResultSections() {
+  ['review-section', 'interest-section', 'confirmation'].forEach(id => {
+    document.getElementById(id)?.classList.add('hidden');
+  });
+}
+
+function setPaymentFieldsEnabled(form, enabled) {
+  form.querySelectorAll('[name="paymentProof"]').forEach(input => {
+    input.disabled = !enabled;
+  });
+}
+
+function setSubmitLabel(form, label) {
+  const submitButton = form.querySelector('button[type="submit"]');
+  if (submitButton) {
+    submitButton.textContent = label;
+  }
+}
+
+function hidePaymentSections(form = document) {
+  form.querySelectorAll('.price-summary, #payment-a, #payment-b').forEach(section => {
+    section.classList.add('hidden');
+  });
+
+  if (form.tagName === 'FORM') {
+    setPaymentFieldsEnabled(form, false);
+    setSubmitLabel(form, 'Continue');
+  }
+}
+
+function showPaymentSection(form, registration) {
+  currentRegistration = registration;
+  form.dataset.registrationId = registration.id || registration.registrationId || '';
+  form.dataset.verificationStatus = 'verified';
+  form.querySelectorAll('.price-summary, #payment-a, #payment-b').forEach(section => {
+    section.classList.remove('hidden');
+  });
+  setPaymentFieldsEnabled(form, true);
+  updatePriceSummary(form);
+  setSubmitLabel(form, 'Submit Payment Proof');
+
+  const paymentSection = form.querySelector('#payment-a, #payment-b');
+  paymentSection?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function resetVerificationState() {
+  document.querySelectorAll('form').forEach(form => {
+    delete form.dataset.registrationId;
+    delete form.dataset.verificationStatus;
+    hidePaymentSections(form);
+  });
 }
 
 function handleParentTypeChange(event) {
@@ -171,9 +227,9 @@ function updateWaitingListStatusFlow() {
     return;
   }
 
-  const shouldContactAdmin = statusSelect.value === 'not_yet';
+  const shouldContactAdmin = false;
   registrationFields.classList.toggle('hidden', shouldContactAdmin);
-  contactCard.classList.toggle('hidden', !shouldContactAdmin);
+  contactCard.classList.toggle('hidden', true);
 
   registrationFields.querySelectorAll('input, select, textarea, button').forEach(element => {
     element.disabled = shouldContactAdmin;
@@ -377,16 +433,40 @@ function validatePaymentProofSelection(form) {
   return false;
 }
 
-async function buildRegistrationPayload(form) {
+function validateContactFields(form) {
+  const phoneInput = form.querySelector('[name="phone"]');
+  const emailInput = form.querySelector('[name="email"]');
+  const phone = String(phoneInput?.value || '').trim();
+  const email = String(emailInput?.value || '').trim();
+
+  if (!/^\d+$/.test(phone)) {
+    phoneInput?.focus();
+    alert('Phone number must contain numbers only.');
+    return false;
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    emailInput?.focus();
+    alert('Please enter a valid email address.');
+    return false;
+  }
+
+  return true;
+}
+
+async function buildRegistrationPayload(form, options = {}) {
+  const includePaymentProof = Boolean(options.includePaymentProof);
   const formData = new FormData(form);
   const paymentProof = formData.get('paymentProof');
   const attendeeCount = String(formData.get('attendeeCount') || '1');
-  const hasPaymentProof = paymentProof && paymentProof.name;
+  const hasPaymentProof = includePaymentProof && paymentProof && paymentProof.name;
   const preparedPaymentProof = hasPaymentProof
     ? await preparePaymentProof(paymentProof)
     : { filename: '', mimeType: '', dataUrl: '' };
 
   const payload = {
+    action: includePaymentProof ? 'payment' : 'verify',
+    registrationId: form.dataset.registrationId || '',
     category: getSelectedCategory(),
     waitingListStatus: String(formData.get('waitingListStatus') || ''),
     studentLevel: String(formData.get('studentLevel') || ''),
@@ -404,8 +484,7 @@ async function buildRegistrationPayload(form) {
   return payload;
 }
 
-async function saveRegistration(form) {
-  const payload = await buildRegistrationPayload(form);
+async function postRegistrationPayload(payload) {
 
   const response = await fetch('/api/registrations', {
     method: 'POST',
@@ -417,11 +496,42 @@ async function saveRegistration(form) {
 
   const result = await response.json();
 
-  if (!response.ok) {
-    throw new Error(result.error || 'Registration failed.');
+  if (!response.ok || result.success === false) {
+    throw new Error(result.error || result.message || 'Registration failed.');
   }
 
-  return result.registration;
+  return result;
+}
+
+async function verifyRegistration(form) {
+  return postRegistrationPayload(await buildRegistrationPayload(form));
+}
+
+async function submitPaymentProof(form) {
+  return postRegistrationPayload(await buildRegistrationPayload(form, { includePaymentProof: true }));
+}
+
+function showReviewSection() {
+  hideResultSections();
+  document.getElementById('review-section')?.classList.remove('hidden');
+  document.getElementById('review-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function showInterestSection() {
+  hideResultSections();
+  document.getElementById('interest-section')?.classList.remove('hidden');
+  document.getElementById('interest-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function showTicketConfirmation(registration) {
+  currentRegistration = registration;
+
+  document.getElementById('reg-id').textContent = registration.registrationId;
+  document.getElementById('seat-display').textContent = registration.seatNumber || generatedSeatNumber || '-';
+  document.getElementById('attendee-display').textContent = `${registration.attendeeCount} attendee(s)`;
+  document.getElementById('total-display').textContent = formatCurrency(registration.totalAmount);
+  document.getElementById('confirmation').classList.remove('hidden');
+  loadConfig();
 }
 
 async function showConfirmation(event) {
@@ -432,34 +542,55 @@ async function showConfirmation(event) {
   const originalLabel = submitButton.textContent;
   const attendeeCount = form.querySelector('[name="attendeeCount"]')?.value;
   const lunchBoxCount = form.querySelector('[name="lunchBoxCount"]')?.value;
+  const isPaymentStep = form.dataset.verificationStatus === 'verified' && form.dataset.registrationId;
 
   if (attendeeCount !== lunchBoxCount) {
     alert('Lunch box reservation must match number of attendees.');
     return;
   }
 
-  if (!validatePaymentProofSelection(form)) {
+  if (!validateContactFields(form)) {
+    return;
+  }
+
+  if (isPaymentStep && !validatePaymentProofSelection(form)) {
     return;
   }
 
   submitButton.disabled = true;
-  submitButton.textContent = 'Saving...';
+  submitButton.textContent = isPaymentStep ? 'Saving...' : 'Checking...';
 
   try {
-    const registration = await saveRegistration(form);
-    currentRegistration = registration;
+    if (isPaymentStep) {
+      const result = await submitPaymentProof(form);
+      showTicketConfirmation(result.registration);
+      return;
+    }
 
-    document.getElementById('reg-id').textContent = registration.registrationId;
-    document.getElementById('seat-display').textContent = registration.seatNumber || generatedSeatNumber || '-';
-    document.getElementById('attendee-display').textContent = `${registration.attendeeCount} attendee(s)`;
-    document.getElementById('total-display').textContent = formatCurrency(registration.totalAmount);
-    document.getElementById('confirmation').classList.remove('hidden');
-    loadConfig();
+    hideResultSections();
+    hidePaymentSections(form);
+    const result = await verifyRegistration(form);
+
+    if (result.status === 'verified') {
+      showPaymentSection(form, result.registration);
+      return;
+    }
+
+    if (result.status === 'need_review') {
+      showReviewSection(result.registration_id);
+      return;
+    }
+
+    showInterestSection(result.registration_id);
   } catch (error) {
     alert(getFriendlyErrorMessage(error));
   } finally {
     submitButton.disabled = false;
-    submitButton.textContent = originalLabel;
+    if (form.dataset.verificationStatus === 'verified' && form.dataset.registrationId) {
+      submitButton.textContent = 'Submit Payment Proof';
+    } else {
+      submitButton.textContent = originalLabel;
+    }
   }
 }
 
@@ -545,12 +676,30 @@ function setupUploadZones() {
   });
 }
 
+function setupContactValidation() {
+  document.querySelectorAll('[name="phone"]').forEach(input => {
+    input.setAttribute('inputmode', 'numeric');
+    input.setAttribute('pattern', '[0-9]*');
+    input.setAttribute('title', 'Phone number must contain numbers only.');
+
+    input.addEventListener('input', () => {
+      input.value = input.value.replace(/\D/g, '');
+    });
+  });
+
+  document.querySelectorAll('[name="email"]').forEach(input => {
+    input.setAttribute('autocomplete', 'email');
+  });
+}
+
 function initPage() {
   fillTemplateContent();
   document.getElementById('parent-type').addEventListener('change', handleParentTypeChange);
   setupAttendanceLunchSync();
   setupWaitingListStatus();
   setupUploadZones();
+  setupContactValidation();
+  hidePaymentSections();
   loadConfig();
 
   if (window.lucide) {
