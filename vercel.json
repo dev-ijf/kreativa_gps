@@ -11,21 +11,21 @@
     {
       "source": "/index.html",
       "destination": "/",
-      "permanent": true
+      "permanent": false
     }
   ],
   "rewrites": [
     {
       "source": "/",
-      "destination": "/index.html"
+      "destination": "/api/page?file=index"
     },
     {
       "source": "/admin",
-      "destination": "/admin.html"
+      "destination": "/api/page?file=admin"
     },
     {
       "source": "/admin.html",
-      "destination": "/admin.html"
+      "destination": "/api/page?file=admin"
     }
   ]
 }
