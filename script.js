@@ -556,7 +556,7 @@ function setInterestSectionCopy() {
   const secondary = section.querySelector('[data-interest-secondary]');
   const exclusive = section.querySelector('[data-interest-exclusive]');
   const list = section.querySelector('[data-interest-list]');
-  const parentType = getCurrentParentType();
+  const parentType = getSelectedCategory();
   const isExisting = parentType === 'existing';
   const isWaitlist = parentType === 'waitlist';
 
