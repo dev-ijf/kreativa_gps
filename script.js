@@ -547,8 +547,51 @@ function showAlreadyRegisteredSection() {
   document.getElementById('already-registered-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
+function setInterestSectionCopy() {
+  const section = document.getElementById('interest-section');
+  if (!section) return;
+
+  const title = section.querySelector('[data-interest-title]');
+  const primary = section.querySelector('[data-interest-primary]');
+  const secondary = section.querySelector('[data-interest-secondary]');
+  const exclusive = section.querySelector('[data-interest-exclusive]');
+  const list = section.querySelector('[data-interest-list]');
+  const parentType = getCurrentParentType();
+  const isExisting = parentType === 'existing';
+  const isWaitlist = parentType === 'waitlist';
+
+  const hideExclusiveList = () => {
+    exclusive?.classList.add('hidden');
+    list?.classList.add('hidden');
+  };
+
+  if (isWaitlist) {
+    if (title) title.textContent = 'Mohon Maaf';
+    if (primary) primary.textContent = 'Mohon maaf, nama anak Bapak/Ibu belum terdaftar sebagai siswa Waiting List Kreativa Global School Tahun Ajaran 2027/2028.';
+    if (secondary) secondary.textContent = 'Silakan menghubungi tim Admin kami melalui WhatsApp untuk konfirmasi data atau mendapatkan bantuan lebih lanjut.';
+    hideExclusiveList();
+    return;
+  }
+
+  if (isExisting) {
+    if (title) title.textContent = 'Mohon Maaf';
+    if (primary) primary.textContent = 'Mohon maaf, nama anak Bapak/Ibu belum terdaftar sebagai siswa Kreativa Global School untuk Tahun Ajaran 2026/2027.';
+    if (secondary) secondary.textContent = 'Apabila anak Bapak/Ibu sudah terdaftar, kemungkinan terdapat perbedaan atau kesalahan dalam penulisan nama. Silakan menghubungi tim Admin kami melalui WhatsApp untuk konfirmasi data atau mendapatkan bantuan lebih lanjut.';
+    hideExclusiveList();
+    return;
+  }
+
+  if (title) title.textContent = 'Terima Kasih atas Ketertarikan Anda';
+  if (primary) primary.textContent = 'Saat ini, Global Parenting Summit 2026 diprioritaskan untuk:';
+  if (secondary) secondary.textContent = 'Jika anak Anda belum terdaftar di Kreativa Global School, silakan hubungi tim admin kami melalui WhatsApp untuk mendapatkan informasi lebih lanjut mengenai kemungkinan undangan khusus, selama kuota masih tersedia.';
+  if (exclusive) exclusive.textContent = 'Jika anak Anda sudah terdaftar namun nama siswa tidak ditemukan, silakan hubungi admin kami melalui WhatsApp agar data dapat kami periksa kembali.';
+  exclusive?.classList.remove('hidden');
+  list?.classList.remove('hidden');
+}
+
 function showInterestSection() {
   hideResultSections();
+  setInterestSectionCopy();
   document.getElementById('interest-section')?.classList.remove('hidden');
   document.getElementById('interest-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
