@@ -1299,7 +1299,7 @@ async function createPostgresRepository() {
     if (matchedStudentId) {
       const params = [matchedStudentId];
       const excludeClause = excludedId
-        ? `AND id::text <> $${params.push(excludedId)} AND registration_id <> $${params.length}`
+        ? `AND id::text <> $${params.push(excludedId)}::text AND registration_id <> $${params.length}::text`
         : '';
       const result = await pool.query(
         `SELECT id, registration_id, student_name, parent_status, verification_status, payment_status, created_at
@@ -1344,7 +1344,7 @@ async function createPostgresRepository() {
 
     const params = [normalizedName, normalizedParentStatus];
     const excludeClause = excludedId
-      ? `AND id::text <> $${params.push(excludedId)} AND registration_id <> $${params.length}`
+      ? `AND id::text <> $${params.push(excludedId)}::text AND registration_id <> $${params.length}::text`
       : '';
     const fallbackResult = await pool.query(
       `SELECT id, registration_id, student_name, parent_status, verification_status, payment_status, created_at
@@ -1533,7 +1533,7 @@ async function createPostgresRepository() {
         const result = await pool.query(
           `SELECT id, student_name, parent_status, grade, created_at
            FROM eligible_students
-           WHERE id::text = $1
+           WHERE id::text = $1::text
            LIMIT 1`,
           [id]
         );
@@ -1544,7 +1544,7 @@ async function createPostgresRepository() {
       const result = await pool.query(
         `UPDATE eligible_students
          SET ${assignments.join(', ')}
-         WHERE id::text = $${values.length}
+         WHERE id::text = $${values.length}::text
          RETURNING id, student_name, parent_status, grade, created_at`,
         values
       );
@@ -1555,7 +1555,7 @@ async function createPostgresRepository() {
     async deleteEligibleStudent(id) {
       await ensureVerificationSchema(pool);
       const result = await pool.query(
-        `DELETE FROM eligible_students WHERE id::text = $1`,
+        `DELETE FROM eligible_students WHERE id::text = $1::text`,
         [id]
       );
       return result.rowCount > 0;
@@ -1570,7 +1570,7 @@ async function createPostgresRepository() {
 
       if (draftRegistrationId) {
         const draftResult = await pool.query(
-          `SELECT * FROM registrations WHERE id::text = $1 OR registration_id = $1 LIMIT 1`,
+          `SELECT * FROM registrations WHERE id::text = $1::text OR registration_id = $1::text LIMIT 1`,
           [draftRegistrationId]
         );
         draftRegistration = draftResult.rows[0] || null;
@@ -1721,7 +1721,7 @@ async function createPostgresRepository() {
       await ensureVerificationSchema(pool);
       const registrationId = normalizeText(payload.registrationId || payload.registration_id || payload.id);
       const currentResult = await pool.query(
-        `SELECT * FROM registrations WHERE id::text = $1 OR registration_id = $1 LIMIT 1`,
+        `SELECT * FROM registrations WHERE id::text = $1::text OR registration_id = $1::text LIMIT 1`,
         [registrationId]
       );
       const current = currentResult.rows[0];
@@ -1833,7 +1833,7 @@ async function createPostgresRepository() {
 
     async get(id) {
       const result = await pool.query(
-        `SELECT * FROM registrations WHERE id::text = $1 OR registration_id = $1 LIMIT 1`,
+        `SELECT * FROM registrations WHERE id::text = $1::text OR registration_id = $1::text LIMIT 1`,
         [id]
       );
 
@@ -1863,7 +1863,7 @@ async function createPostgresRepository() {
       const result = await pool.query(
         `UPDATE registrations
          SET ${assignments.join(', ')}
-         WHERE id::text = $${values.length} OR registration_id = $${values.length}
+         WHERE id::text = $${values.length}::text OR registration_id = $${values.length}::text
          RETURNING *`,
         values
       );
@@ -1873,7 +1873,7 @@ async function createPostgresRepository() {
 
     async delete(id) {
       const result = await pool.query(
-        `DELETE FROM registrations WHERE id::text = $1 OR registration_id = $1`,
+        `DELETE FROM registrations WHERE id::text = $1::text OR registration_id = $1::text`,
         [id]
       );
       return result.rowCount > 0;
