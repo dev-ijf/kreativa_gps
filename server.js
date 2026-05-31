@@ -31,7 +31,7 @@ const defaultEligibleStudents = [
   { id: 3, studentName: 'Muhammad Arkan', parentStatus: 'waiting_list_parent', grade: 'P1' }
 ];
 let verificationSchemaReady = false;
-const activeDuplicatePaymentStatuses = new Set(['pending', 'verified', 'paid', 'confirmed', 'waiting_confirmation']);
+const activeDuplicatePaymentStatuses = new Set(['verified', 'paid', 'confirmed', 'waiting_confirmation']);
 
 const contentTypes = {
   '.html': 'text/html; charset=utf-8',
@@ -685,9 +685,17 @@ async function verifyJsonStudentName(store, { studentName, parentStatus }) {
   };
 }
 
-function isActiveDuplicatePaymentStatus(paymentStatus) {
-  const normalized = normalizeText(paymentStatus);
-  return !normalized || activeDuplicatePaymentStatuses.has(normalized);
+function hasStoredPaymentProof(row) {
+  return Boolean(
+    normalizeText(row.paymentProofFilename || row.payment_proof_filename)
+    || normalizeText(row.paymentProofData || row.payment_proof_data)
+  );
+}
+
+function isActiveDuplicateRegistration(row) {
+  const normalizedStatus = normalizeText(row.paymentStatus || row.payment_status);
+  return activeDuplicatePaymentStatuses.has(normalizedStatus)
+    || ((!normalizedStatus || normalizedStatus === 'pending') && hasStoredPaymentProof(row));
 }
 
 function checkJsonExistingRegistration(store, { matchedStudentId, studentName, parentStatus, excludeRegistrationId = null }) {
@@ -699,7 +707,7 @@ function checkJsonExistingRegistration(store, { matchedStudentId, studentName, p
         && row.id !== excludedId
         && row.registrationId !== excludedId
         && row.verificationStatus === 'verified'
-        && isActiveDuplicatePaymentStatus(row.paymentStatus))
+        && isActiveDuplicateRegistration(row))
       .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)))[0];
 
     if (matched) {
@@ -719,7 +727,7 @@ function checkJsonExistingRegistration(store, { matchedStudentId, studentName, p
       && row.id !== excludedId
       && row.registrationId !== excludedId
       && row.verificationStatus === 'verified'
-      && isActiveDuplicatePaymentStatus(row.paymentStatus))
+      && isActiveDuplicateRegistration(row))
     .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)))[0];
 
   if (fallback) {
@@ -845,6 +853,18 @@ async function createJsonRepository() {
       let duplicateReferenceId = null;
       let verificationNotes = verification.notes;
 
+      if (verificationStatus === 'not_verified') {
+        return {
+          success: true,
+          status: verificationStatus,
+          registration_id: null,
+          registrationId: '',
+          message: getVerificationMessage(verificationStatus),
+          next_step: getVerificationNextStep(verificationStatus),
+          registration: null
+        };
+      }
+
       if (verification.status === 'verified') {
         const duplicateCheck = checkJsonExistingRegistration(store, {
           matchedStudentId: verification.matchedStudentId,
@@ -941,6 +961,38 @@ async function createJsonRepository() {
         const error = new Error('Payment is only available for verified registrations.');
         error.statusCode = 403;
         throw error;
+      }
+
+      const duplicateCheck = checkJsonExistingRegistration(store, {
+        matchedStudentId: current.matchedStudentId,
+        studentName: current.studentName,
+        parentStatus: current.parentStatus,
+        excludeRegistrationId: current.id
+      });
+
+      if (duplicateCheck.exists) {
+        const next = {
+          ...current,
+          verificationStatus: 'already_registered',
+          duplicateReferenceId: duplicateCheck.registrationId,
+          verificationNotes: duplicateCheck.notes,
+          seatNumber: '',
+          updatedAt: new Date().toISOString()
+        };
+        store.registrations[rowIndex] = next;
+        await writeStore(store);
+        const publicRegistration = { ...next };
+        delete publicRegistration.duplicateReferenceId;
+
+        return {
+          success: true,
+          status: 'already_registered',
+          registration_id: next.id,
+          registrationId: next.registrationId,
+          message: getVerificationMessage('already_registered'),
+          next_step: getVerificationNextStep('already_registered'),
+          registration: publicRegistration
+        };
       }
 
       const { attendeeCount, lunchBoxCount } = normalizeRegistrationCounts(payload);
@@ -1122,8 +1174,14 @@ async function createPostgresRepository() {
            ${excludeClause}
            AND verification_status = 'verified'
            AND (
-             payment_status IS NULL
-             OR payment_status IN ('pending', 'verified', 'paid', 'confirmed', 'waiting_confirmation')
+             payment_status IN ('verified', 'paid', 'confirmed', 'waiting_confirmation')
+             OR (
+               (payment_status IS NULL OR payment_status = 'pending')
+               AND (
+                 NULLIF(payment_proof_filename, '') IS NOT NULL
+                 OR NULLIF(payment_proof_data, '') IS NOT NULL
+               )
+             )
          )
          ORDER BY created_at ASC
          LIMIT 1`,
@@ -1162,8 +1220,14 @@ async function createPostgresRepository() {
          ${excludeClause}
          AND verification_status = 'verified'
          AND (
-           payment_status IS NULL
-           OR payment_status IN ('pending', 'verified', 'paid', 'confirmed', 'waiting_confirmation')
+           payment_status IN ('verified', 'paid', 'confirmed', 'waiting_confirmation')
+           OR (
+             (payment_status IS NULL OR payment_status = 'pending')
+             AND (
+               NULLIF(payment_proof_filename, '') IS NOT NULL
+               OR NULLIF(payment_proof_data, '') IS NOT NULL
+             )
+           )
        )
        ORDER BY created_at ASC
        LIMIT 1`,
@@ -1274,6 +1338,18 @@ async function createPostgresRepository() {
       let verificationStatus = verification.status;
       let duplicateReferenceId = null;
       let verificationNotes = verification.notes;
+
+      if (verificationStatus === 'not_verified') {
+        return {
+          success: true,
+          status: verificationStatus,
+          registration_id: null,
+          registrationId: '',
+          message: getVerificationMessage(verificationStatus),
+          next_step: getVerificationNextStep(verificationStatus),
+          registration: null
+        };
+      }
 
       if (verification.status === 'verified') {
         const duplicateCheck = await checkExistingRegistration({
@@ -1424,6 +1500,39 @@ async function createPostgresRepository() {
         const error = new Error('Payment is only available for verified registrations.');
         error.statusCode = 403;
         throw error;
+      }
+
+      const duplicateCheck = await checkExistingRegistration({
+        matchedStudentId: current.matched_student_id,
+        studentName: current.student_name,
+        parentStatus: current.parent_status,
+        excludeRegistrationId: current.id
+      });
+
+      if (duplicateCheck.exists) {
+        const duplicateResult = await pool.query(
+          `UPDATE registrations
+           SET verification_status = 'already_registered',
+               duplicate_reference_id = $1,
+               verification_notes = $2,
+               seat_number = NULL
+           WHERE id = $3
+           RETURNING *`,
+          [duplicateCheck.registrationId, duplicateCheck.notes, current.id]
+        );
+        const registration = toCamelRow(duplicateResult.rows[0]);
+        const publicRegistration = { ...registration };
+        delete publicRegistration.duplicateReferenceId;
+
+        return {
+          success: true,
+          status: 'already_registered',
+          registration_id: registration.id,
+          registrationId: registration.registrationId,
+          message: getVerificationMessage('already_registered'),
+          next_step: getVerificationNextStep('already_registered'),
+          registration: publicRegistration
+        };
       }
 
       const { attendeeCount, lunchBoxCount } = normalizeRegistrationCounts(payload);

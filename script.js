@@ -578,6 +578,95 @@ async function submitPaymentProof(form) {
   return postRegistrationPayload(await buildRegistrationPayload(form, { includePaymentProof: true }));
 }
 
+function isPaymentLinkContinuable(registration) {
+  const paymentStatus = String(registration?.paymentStatus || '').trim();
+  const hasPaymentProof = Boolean(registration?.paymentProofFilename);
+  const lockedStatuses = new Set(['verified', 'paid', 'confirmed', 'waiting_confirmation']);
+
+  return registration?.verificationStatus === 'verified'
+    && !lockedStatuses.has(paymentStatus)
+    && !(paymentStatus === 'pending' && hasPaymentProof);
+}
+
+function fillRegistrationForm(form, registration) {
+  const values = {
+    waitingListStatus: registration.waitingListStatus || 'paid_commitment_fee',
+    studentLevel: registration.studentLevel,
+    studentName: registration.studentName,
+    parentName: registration.parentName,
+    phone: registration.phone,
+    email: registration.email,
+    attendeeCount: registration.attendeeCount || 1,
+    lunchBoxCount: registration.lunchBoxCount || registration.attendeeCount || 1
+  };
+
+  Object.entries(values).forEach(([name, value]) => {
+    const input = form.querySelector(`[name="${name}"]`);
+    if (input) {
+      input.value = value || '';
+    }
+  });
+
+  form.dataset.registrationId = registration.id || registration.registrationId || '';
+  form.dataset.verificationStatus = 'verified';
+  clearPaymentProofSelection(form);
+  updatePriceSummary(form);
+}
+
+async function loadPaymentContinuationLink() {
+  const params = new URLSearchParams(window.location.search);
+  const registrationId = normalizeInputValue(params.get('registration') || params.get('pay') || '');
+
+  if (!registrationId) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/registrations/${encodeURIComponent(registrationId)}`);
+    const result = await response.json();
+
+    if (!response.ok || !result.registration) {
+      throw new Error(result.error || 'Data pendaftaran tidak ditemukan.');
+    }
+
+    const registration = result.registration;
+
+    if (!isPaymentLinkContinuable(registration)) {
+      if (registration.verificationStatus === 'need_review') {
+        showReviewSection(registration.id);
+        return;
+      }
+
+      if (registration.verificationStatus === 'already_registered'
+        || registration.paymentProofFilename
+        || ['verified', 'paid', 'confirmed', 'waiting_confirmation'].includes(String(registration.paymentStatus || '').trim())) {
+        showAlreadyRegisteredSection(registration.id);
+        return;
+      }
+
+      showInterestSection(registration.id);
+      return;
+    }
+
+    const parentType = document.getElementById('parent-type');
+    parentType.value = registration.parentCategory;
+    parentType.dispatchEvent(new Event('change', { bubbles: true }));
+
+    const form = registration.parentCategory === 'waitlist'
+      ? document.getElementById('flow-b')
+      : document.getElementById('flow-a');
+
+    if (!form) {
+      throw new Error('Form pembayaran tidak ditemukan.');
+    }
+
+    fillRegistrationForm(form, registration);
+    showPaymentSection(form, registration);
+  } catch (error) {
+    alert(getFriendlyErrorMessage(error));
+  }
+}
+
 function showReviewSection() {
   hideResultSections();
   document.getElementById('review-section')?.classList.remove('hidden');
@@ -819,6 +908,10 @@ async function showConfirmation(event) {
   try {
     if (isPaymentStep) {
       const result = await submitPaymentProof(form);
+      if (result.status === 'already_registered') {
+        showAlreadyRegisteredSection(result.registration_id);
+        return;
+      }
       showTicketConfirmation(result.registration);
       return;
     }
@@ -929,7 +1022,7 @@ function initPage() {
   setupUploadZones();
   setupContactValidation();
   hidePaymentSections();
-  loadConfig();
+  loadConfig().then(loadPaymentContinuationLink);
 
   if (window.lucide) {
     window.lucide.createIcons();

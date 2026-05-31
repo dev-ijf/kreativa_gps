@@ -197,6 +197,23 @@ function renderPaymentProof(row) {
   `;
 }
 
+function buildPaymentContinuationUrl(row) {
+  const url = new URL('/', window.location.origin);
+  url.searchParams.set('registration', row.registrationId || row.id);
+  return url.toString();
+}
+
+async function copyPaymentContinuationLink(row) {
+  const link = buildPaymentContinuationUrl(row);
+
+  try {
+    await navigator.clipboard.writeText(link);
+    alert('Link lanjut pembayaran sudah disalin.');
+  } catch {
+    window.prompt('Salin link lanjut pembayaran:', link);
+  }
+}
+
 function openTicketImage(row, ticketWindow) {
   const canvas = document.createElement('canvas');
   canvas.width = 600;
@@ -329,6 +346,9 @@ function renderRows(rows) {
         <textarea data-field="notes" class="admin-update w-56 min-h-20 p-2 rounded-lg border border-slate-200">${escapeHtml(row.notes || '')}</textarea>
       </td>
       <td class="px-4 py-4 text-right">
+        <button data-action="payment-link" title="Copy payment link" aria-label="Copy payment link for ${escapeHtml(row.registrationId)}" class="inline-flex items-center justify-center w-10 h-10 rounded-lg text-[#1f3f8f] bg-blue-50 hover:bg-blue-100 mr-2">
+          <i data-lucide="link" class="w-5 h-5"></i>
+        </button>
         <button data-action="ticket" title="Open ticket" aria-label="Open ticket for ${escapeHtml(row.registrationId)}" class="inline-flex items-center justify-center w-10 h-10 rounded-lg text-[#1a2744] bg-slate-100 hover:bg-slate-200 mr-2">
           <i data-lucide="ticket" class="w-5 h-5"></i>
         </button>
@@ -403,6 +423,18 @@ tableBody.addEventListener('blur', async event => {
 tableBody.addEventListener('click', async event => {
   const button = event.target.closest('[data-action="delete"]');
   const ticketButton = event.target.closest('[data-action="ticket"]');
+  const paymentLinkButton = event.target.closest('[data-action="payment-link"]');
+
+  if (paymentLinkButton) {
+    const row = paymentLinkButton.closest('tr');
+    const registration = currentRows.find(item => String(item.id) === String(row.dataset.id));
+
+    if (registration) {
+      await copyPaymentContinuationLink(registration);
+    }
+
+    return;
+  }
 
   if (ticketButton) {
     const ticketWindow = window.open('', '_blank');
