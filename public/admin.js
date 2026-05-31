@@ -11,6 +11,7 @@ const quotaRemaining = document.getElementById('admin-quota-remaining');
 
 const paymentOptions = ['pending', 'verified', 'rejected'];
 const statusOptions = ['confirmed', 'attended', 'cancelled'];
+let currentRows = [];
 
 function escapeHtml(value) {
   return String(value || '')
@@ -79,6 +80,74 @@ function renderPaymentProof(row) {
   `;
 }
 
+function openTicketImage(row, ticketWindow) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 600;
+  canvas.height = 800;
+
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, 600, 800);
+
+  ctx.fillStyle = '#ED3A5F';
+  ctx.fillRect(0, 0, 600, 100);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 28px Poppins, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('Global Parenting Summit', 300, 50);
+  ctx.font = '20px Poppins, sans-serif';
+  ctx.fillText('2026', 300, 80);
+
+  ctx.fillStyle = '#1a2744';
+  ctx.font = 'bold 24px Poppins, sans-serif';
+  ctx.fillText('E-TICKET', 300, 150);
+
+  ctx.font = '16px Poppins, sans-serif';
+  ctx.fillText(row.registrationId || '-', 300, 185);
+
+  ctx.font = 'bold 14px Poppins, sans-serif';
+  ctx.fillText('Nomor Kursi', 300, 225);
+  ctx.font = 'bold 18px Poppins, sans-serif';
+  ctx.fillText(row.seatNumber || '-', 300, 250);
+
+  ctx.font = 'bold 14px Poppins, sans-serif';
+  ctx.fillText('Peserta', 300, 285);
+  ctx.font = 'bold 18px Poppins, sans-serif';
+  ctx.fillText(`${row.attendeeCount || '-'} peserta`, 300, 310);
+
+  ctx.fillStyle = '#4a5568';
+  ctx.font = '14px Poppins, sans-serif';
+  ctx.fillText('Tanggal: Sabtu, 20 Juni 2026', 300, 360);
+  ctx.fillText('Waktu: 08:00 - 16:00 WIB', 300, 390);
+  ctx.fillText('Tempat: Exibition Hall (Lantai 3),', 300, 420);
+  ctx.fillText('Summarecon Mall Bandung', 300, 450);
+
+  ctx.fillStyle = '#1a2744';
+  ctx.font = 'bold 16px Poppins, sans-serif';
+  ctx.fillText('Kreativa Global School', 300, 540);
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '12px Poppins, sans-serif';
+  ctx.fillText('info@kreativaglobal.sch.id', 300, 570);
+
+  if (!ticketWindow) {
+    alert('Pop-up diblokir. Izinkan pop-up untuk membuka tiket.');
+    return;
+  }
+
+  const imageUrl = canvas.toDataURL('image/png');
+  ticketWindow.document.write(`
+    <!doctype html>
+    <html>
+      <head><title>${escapeHtml(row.registrationId || 'ticket')}</title></head>
+      <body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#f8fafc;">
+        <img src="${imageUrl}" alt="Ticket ${escapeHtml(row.registrationId || '')}" style="max-width:100%;height:auto;">
+      </body>
+    </html>
+  `);
+  ticketWindow.document.close();
+}
+
 function buildQuery() {
   const params = new URLSearchParams();
 
@@ -133,6 +202,7 @@ async function loadRegistrations() {
 }
 
 function renderRows(rows) {
+  currentRows = rows;
   emptyState.classList.toggle('hidden', rows.length > 0);
 
   if (!rows.length) {
@@ -178,6 +248,9 @@ function renderRows(rows) {
         <textarea data-field="notes" class="admin-update w-56 min-h-20 p-2 rounded-lg border border-slate-200">${escapeHtml(row.notes || '')}</textarea>
       </td>
       <td class="px-4 py-4 text-right">
+        <button data-action="ticket" title="Open ticket" aria-label="Open ticket for ${escapeHtml(row.registrationId)}" class="inline-flex items-center justify-center w-10 h-10 rounded-lg text-[#1a2744] bg-slate-100 hover:bg-slate-200 mr-2">
+          <i data-lucide="ticket" class="w-5 h-5"></i>
+        </button>
         <button data-action="delete" class="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-red-700 bg-red-50 hover:bg-red-100">
           Delete
         </button>
@@ -248,6 +321,26 @@ tableBody.addEventListener('blur', async event => {
 
 tableBody.addEventListener('click', async event => {
   const button = event.target.closest('[data-action="delete"]');
+  const ticketButton = event.target.closest('[data-action="ticket"]');
+
+  if (ticketButton) {
+    const ticketWindow = window.open('', '_blank');
+    if (ticketWindow) {
+      ticketWindow.document.write('<!doctype html><title>Loading ticket...</title><body style="font-family:sans-serif;padding:24px;">Loading ticket...</body>');
+      ticketWindow.document.close();
+    }
+    const row = ticketButton.closest('tr');
+    const registration = currentRows.find(item => String(item.id) === String(row.dataset.id));
+
+    if (registration) {
+      openTicketImage(registration, ticketWindow);
+    } else if (ticketWindow) {
+      ticketWindow.close();
+    }
+
+    return;
+  }
+
   if (!button) {
     return;
   }
