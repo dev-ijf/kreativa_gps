@@ -60,6 +60,123 @@ function formatCurrency(value) {
   }).format(Number(value || 0));
 }
 
+function fitCanvasText(ctx, text, maxWidth) {
+  const value = String(text || '-');
+
+  if (ctx.measureText(value).width <= maxWidth) {
+    return value;
+  }
+
+  let clipped = value;
+  while (clipped.length > 1 && ctx.measureText(`${clipped}...`).width > maxWidth) {
+    clipped = clipped.slice(0, -1);
+  }
+
+  return `${clipped}...`;
+}
+
+function drawRoundedRect(ctx, x, y, width, height, radius) {
+  const r = Math.min(radius, width / 2, height / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + width - r, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+  ctx.lineTo(x + width, y + height - r);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+  ctx.lineTo(x + r, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function drawTicketCanvas(ctx, ticket) {
+  ctx.fillStyle = '#f6f8fb';
+  ctx.fillRect(0, 0, 600, 800);
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(26, 39, 68, 0.16)';
+  ctx.shadowBlur = 28;
+  ctx.shadowOffsetY = 12;
+  drawRoundedRect(ctx, 48, 42, 504, 732, 28);
+  ctx.fillStyle = '#ffffff';
+  ctx.fill();
+  ctx.restore();
+
+  drawRoundedRect(ctx, 48, 42, 504, 150, 28);
+  ctx.fillStyle = '#1f3f8f';
+  ctx.fill();
+  ctx.fillRect(48, 150, 504, 42);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '600 13px Poppins, sans-serif';
+  ctx.fillText('KREATIVA GLOBAL SCHOOL', 300, 82);
+  ctx.font = 'bold 30px Poppins, sans-serif';
+  ctx.fillText('Global Parenting', 300, 122);
+  ctx.fillText('Summit 2026', 300, 160);
+
+  drawRoundedRect(ctx, 214, 208, 172, 42, 21);
+  ctx.fillStyle = '#eef4ff';
+  ctx.fill();
+  ctx.fillStyle = '#1f3f8f';
+  ctx.font = 'bold 16px Poppins, sans-serif';
+  ctx.fillText('E-TICKET', 300, 235);
+
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '12px Poppins, sans-serif';
+  ctx.fillText('NAMA SISWA', 84, 306);
+  ctx.fillStyle = '#1a2744';
+  ctx.font = 'bold 20px Poppins, sans-serif';
+  ctx.fillText(fitCanvasText(ctx, ticket.studentName, 430), 84, 334);
+
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '12px Poppins, sans-serif';
+  ctx.fillText('NAMA ORANG TUA', 84, 378);
+  ctx.fillStyle = '#1a2744';
+  ctx.font = 'bold 20px Poppins, sans-serif';
+  ctx.fillText(fitCanvasText(ctx, ticket.parentName, 430), 84, 406);
+
+  [['NOMOR KURSI', ticket.seatNumber || '-'], ['PESERTA', `${ticket.attendeeCount || '-'} peserta`]].forEach(([label, value], index) => {
+    const x = index === 0 ? 84 : 314;
+    drawRoundedRect(ctx, x, 440, 202, 82, 16);
+    ctx.fillStyle = '#f8fafc';
+    ctx.fill();
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '11px Poppins, sans-serif';
+    ctx.fillText(label, x + 18, 470);
+    ctx.fillStyle = '#1a2744';
+    ctx.font = 'bold 20px Poppins, sans-serif';
+    ctx.fillText(fitCanvasText(ctx, value, 166), x + 18, 500);
+  });
+
+  drawRoundedRect(ctx, 84, 544, 432, 144, 18);
+  ctx.fillStyle = '#f3f7ff';
+  ctx.fill();
+
+  [
+    ['HARI / TANGGAL', 'Sabtu, 20 Juni 2026'],
+    ['WAKTU', '08:00 - 16:00 WIB'],
+    ['LOKASI', 'Exibition Hall (Lantai 3),']
+  ].forEach(([label, value], index) => {
+    const y = 580 + index * 34;
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = 'bold 10px Poppins, sans-serif';
+    ctx.fillText(label, 108, y);
+    ctx.fillStyle = index === 0 ? '#1f3f8f' : '#1a2744';
+    ctx.font = 'bold 13px Poppins, sans-serif';
+    ctx.fillText(value, 228, y);
+  });
+  ctx.fillStyle = '#1a2744';
+  ctx.font = 'bold 13px Poppins, sans-serif';
+  ctx.fillText('Summarecon Mall Bandung', 228, 682);
+
+  ctx.fillStyle = '#64748b';
+  ctx.font = '11px Poppins, sans-serif';
+  ctx.fillText('* Mohon simpan e-ticket ini untuk ditunjukkan saat registrasi ulang.', 84, 718);
+}
+
 function paymentProofUrl(filename) {
   return `/api/payment-proofs/${encodeURIComponent(filename)}`;
 }
@@ -86,49 +203,13 @@ function openTicketImage(row, ticketWindow) {
   canvas.height = 800;
 
   const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, 600, 800);
-
-  ctx.fillStyle = '#ED3A5F';
-  ctx.fillRect(0, 0, 600, 100);
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 28px Poppins, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('Global Parenting Summit', 300, 50);
-  ctx.font = '20px Poppins, sans-serif';
-  ctx.fillText('2026', 300, 80);
-
-  ctx.fillStyle = '#1a2744';
-  ctx.font = 'bold 24px Poppins, sans-serif';
-  ctx.fillText('E-TICKET', 300, 150);
-
-  ctx.font = '16px Poppins, sans-serif';
-  ctx.fillText(row.registrationId || '-', 300, 185);
-
-  ctx.font = 'bold 14px Poppins, sans-serif';
-  ctx.fillText('Nomor Kursi', 300, 225);
-  ctx.font = 'bold 18px Poppins, sans-serif';
-  ctx.fillText(row.seatNumber || '-', 300, 250);
-
-  ctx.font = 'bold 14px Poppins, sans-serif';
-  ctx.fillText('Peserta', 300, 285);
-  ctx.font = 'bold 18px Poppins, sans-serif';
-  ctx.fillText(`${row.attendeeCount || '-'} peserta`, 300, 310);
-
-  ctx.fillStyle = '#4a5568';
-  ctx.font = '14px Poppins, sans-serif';
-  ctx.fillText('Tanggal: Sabtu, 20 Juni 2026', 300, 360);
-  ctx.fillText('Waktu: 08:00 - 16:00 WIB', 300, 390);
-  ctx.fillText('Tempat: Exibition Hall (Lantai 3),', 300, 420);
-  ctx.fillText('Summarecon Mall Bandung', 300, 450);
-
-  ctx.fillStyle = '#1a2744';
-  ctx.font = 'bold 16px Poppins, sans-serif';
-  ctx.fillText('Kreativa Global School', 300, 540);
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = '12px Poppins, sans-serif';
-  ctx.fillText('info@kreativaglobal.sch.id', 300, 570);
+  drawTicketCanvas(ctx, {
+    registrationId: row.registrationId,
+    studentName: row.studentName,
+    parentName: row.parentName,
+    seatNumber: row.seatNumber,
+    attendeeCount: row.attendeeCount
+  });
 
   if (!ticketWindow) {
     alert('Pop-up diblokir. Izinkan pop-up untuk membuka tiket.');
