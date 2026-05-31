@@ -87,18 +87,28 @@
    </section>
 
    <section class="bg-white border border-slate-200 rounded-xl overflow-hidden">
-    <div class="overflow-x-auto">
-     <table class="min-w-full text-sm">
+    <div class="admin-table-wrap">
+     <table class="admin-table w-full table-fixed text-sm">
+      <colgroup>
+       <col class="w-[12%]">
+       <col class="w-[16%]">
+       <col class="w-[16%]">
+       <col class="w-[11%]">
+       <col class="w-[12%]">
+       <col class="w-[10%]">
+       <col class="w-[13%]">
+       <col class="w-[10%]">
+      </colgroup>
       <thead class="bg-slate-50 text-slate-500">
        <tr>
-        <th class="text-left font-semibold px-4 py-3">Registration</th>
-        <th class="text-left font-semibold px-4 py-3">Student</th>
-        <th class="text-left font-semibold px-4 py-3">Parent</th>
-        <th class="text-left font-semibold px-4 py-3">Category</th>
-        <th class="text-left font-semibold px-4 py-3">Payment</th>
-        <th class="text-left font-semibold px-4 py-3">Status</th>
-        <th class="text-left font-semibold px-4 py-3">Notes</th>
-        <th class="text-right font-semibold px-4 py-3">Actions</th>
+        <th class="text-left font-semibold px-3 py-3">Registration</th>
+        <th class="text-left font-semibold px-3 py-3">Student</th>
+        <th class="text-left font-semibold px-3 py-3">Parent</th>
+        <th class="text-left font-semibold px-3 py-3">Category</th>
+        <th class="text-left font-semibold px-3 py-3">Payment</th>
+        <th class="text-left font-semibold px-3 py-3">Status</th>
+        <th class="text-left font-semibold px-3 py-3">Notes</th>
+        <th class="text-right font-semibold px-3 py-3">Actions</th>
        </tr>
       </thead>
       <tbody id="registrations-body" class="divide-y divide-slate-100"></tbody>

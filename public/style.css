@@ -206,6 +206,30 @@ button:disabled {
   color: #fff;
 }
 
+.admin-table-wrap {
+  width: 100%;
+}
+
+.admin-table th,
+.admin-table td {
+  overflow-wrap: anywhere;
+}
+
+.admin-table select,
+.admin-table textarea {
+  max-width: 100%;
+}
+
+@media (max-width: 1023px) {
+  .admin-table-wrap {
+    overflow-x: auto;
+  }
+
+  .admin-table {
+    min-width: 980px;
+  }
+}
+
 @media (max-width: 640px) {
   header {
     min-height: 640px;

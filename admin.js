@@ -310,51 +310,53 @@ function renderRows(rows) {
 
   tableBody.innerHTML = rows.map(row => `
     <tr data-id="${row.id}" class="align-top">
-      <td class="px-4 py-4">
-        <div class="font-semibold text-[#1a2744]">${escapeHtml(row.registrationId)}</div>
+      <td class="px-3 py-4 break-words">
+        <div class="font-semibold text-[#1a2744] leading-snug">${escapeHtml(row.registrationId)}</div>
         <div class="text-slate-500">Seat ${escapeHtml(row.seatNumber)}</div>
         <div class="text-xs text-slate-400 mt-1">${formatDate(row.createdAt)}</div>
       </td>
-      <td class="px-4 py-4">
-        <div class="font-medium">${escapeHtml(row.studentName)}</div>
+      <td class="px-3 py-4 break-words">
+        <div class="font-medium leading-snug">${escapeHtml(row.studentName)}</div>
         <div class="text-slate-500">${escapeHtml(row.studentLevel)}</div>
         <div class="text-slate-500">${escapeHtml(row.attendeeCount)} attendee(s), ${escapeHtml(row.lunchBoxCount)} lunch</div>
         <div class="text-[#ED3A5F] font-semibold mt-1">${formatCurrency(row.totalAmount)}</div>
       </td>
-      <td class="px-4 py-4">
-        <div class="font-medium">${escapeHtml(row.parentName)}</div>
-        <div class="text-slate-500">${escapeHtml(row.phone)}</div>
-        <div class="text-slate-500">${escapeHtml(row.email)}</div>
+      <td class="px-3 py-4 break-words">
+        <div class="font-medium leading-snug">${escapeHtml(row.parentName)}</div>
+        <div class="text-slate-500 break-all">${escapeHtml(row.phone)}</div>
+        <div class="text-slate-500 break-all">${escapeHtml(row.email)}</div>
       </td>
-      <td class="px-4 py-4">
-        <span class="inline-flex px-3 py-1 rounded-full bg-slate-100 text-slate-700">${formatCategory(row.parentCategory)}</span>
+      <td class="px-3 py-4 break-words">
+        <span class="inline-flex px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 leading-tight">${formatCategory(row.parentCategory)}</span>
         ${row.waitingListStatus ? `<div class="text-slate-500 mt-2">${escapeHtml(row.waitingListStatus)}</div>` : ''}
       </td>
-      <td class="px-4 py-4">
-        <select data-field="paymentStatus" class="admin-update w-full p-2 rounded-lg border border-slate-200">
+      <td class="px-3 py-4">
+        <select data-field="paymentStatus" class="admin-update w-full p-2 rounded-lg border border-slate-200 text-sm">
           ${optionHtml(paymentOptions, row.paymentStatus)}
         </select>
-        <div class="text-xs text-slate-400 mt-2">${escapeHtml(row.paymentProofFilename || 'No file name')}</div>
+        <div class="text-xs text-slate-400 mt-2 break-all">${escapeHtml(row.paymentProofFilename || 'No file name')}</div>
         ${renderPaymentProof(row)}
       </td>
-      <td class="px-4 py-4">
-        <select data-field="status" class="admin-update w-full p-2 rounded-lg border border-slate-200">
+      <td class="px-3 py-4">
+        <select data-field="status" class="admin-update w-full p-2 rounded-lg border border-slate-200 text-sm">
           ${optionHtml(statusOptions, row.status)}
         </select>
       </td>
-      <td class="px-4 py-4">
-        <textarea data-field="notes" class="admin-update w-56 min-h-20 p-2 rounded-lg border border-slate-200">${escapeHtml(row.notes || '')}</textarea>
+      <td class="px-3 py-4">
+        <textarea data-field="notes" class="admin-update w-full min-h-16 p-2 rounded-lg border border-slate-200 text-sm resize-y">${escapeHtml(row.notes || '')}</textarea>
       </td>
-      <td class="px-4 py-4 text-right">
-        <button data-action="payment-link" title="Copy payment link" aria-label="Copy payment link for ${escapeHtml(row.registrationId)}" class="inline-flex items-center justify-center w-10 h-10 rounded-lg text-[#1f3f8f] bg-blue-50 hover:bg-blue-100 mr-2">
+      <td class="px-3 py-4">
+        <div class="flex items-center justify-end gap-1.5">
+        <button data-action="payment-link" title="Copy payment link" aria-label="Copy payment link for ${escapeHtml(row.registrationId)}" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-[#1f3f8f] bg-blue-50 hover:bg-blue-100">
           <i data-lucide="link" class="w-5 h-5"></i>
         </button>
-        <button data-action="ticket" title="Open ticket" aria-label="Open ticket for ${escapeHtml(row.registrationId)}" class="inline-flex items-center justify-center w-10 h-10 rounded-lg text-[#1a2744] bg-slate-100 hover:bg-slate-200 mr-2">
+        <button data-action="ticket" title="Open ticket" aria-label="Open ticket for ${escapeHtml(row.registrationId)}" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-[#1a2744] bg-slate-100 hover:bg-slate-200">
           <i data-lucide="ticket" class="w-5 h-5"></i>
         </button>
-        <button data-action="delete" class="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-red-700 bg-red-50 hover:bg-red-100">
-          Delete
+        <button data-action="delete" title="Delete registration" aria-label="Delete ${escapeHtml(row.registrationId)}" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-red-700 bg-red-50 hover:bg-red-100">
+          <i data-lucide="trash-2" class="w-5 h-5"></i>
         </button>
+        </div>
       </td>
     </tr>
   `).join('');
