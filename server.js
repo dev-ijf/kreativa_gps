@@ -292,6 +292,8 @@ function normalizeName(name) {
 
   return name
     .toString()
+    .normalize('NFKC')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
     .toLowerCase()
     .trim()
     .replace(/\s+/g, ' ');
@@ -638,6 +640,16 @@ async function verifyJsonStudentName(store, { studentName, parentStatus }) {
   const eligibleRows = getJsonEligibleStudents(store)
     .filter(row => row.parentStatus === parentStatus);
 
+  const exactMatch = eligibleRows.find(student => normalizeName(student.studentName) === normalizedInputName);
+
+  if (exactMatch) {
+    return {
+      status: 'verified',
+      matchedStudentId: exactMatch.id,
+      notes: 'Verified by normalized student name.'
+    };
+  }
+
   let bestMatch = null;
   let bestSimilarity = 0;
 
@@ -678,10 +690,14 @@ function isActiveDuplicatePaymentStatus(paymentStatus) {
   return !normalized || activeDuplicatePaymentStatuses.has(normalized);
 }
 
-function checkJsonExistingRegistration(store, { matchedStudentId, studentName, parentStatus }) {
+function checkJsonExistingRegistration(store, { matchedStudentId, studentName, parentStatus, excludeRegistrationId = null }) {
+  const excludedId = normalizeText(excludeRegistrationId);
+
   if (matchedStudentId) {
     const matched = store.registrations
       .filter(row => row.matchedStudentId === matchedStudentId
+        && row.id !== excludedId
+        && row.registrationId !== excludedId
         && row.verificationStatus === 'verified'
         && isActiveDuplicatePaymentStatus(row.paymentStatus))
       .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)))[0];
@@ -700,6 +716,8 @@ function checkJsonExistingRegistration(store, { matchedStudentId, studentName, p
   const fallback = store.registrations
     .filter(row => normalizeName(row.studentName) === normalizedName
       && normalizeName(row.parentStatus) === normalizedParentStatus
+      && row.id !== excludedId
+      && row.registrationId !== excludedId
       && row.verificationStatus === 'verified'
       && isActiveDuplicatePaymentStatus(row.paymentStatus))
     .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)))[0];
@@ -811,6 +829,14 @@ async function createJsonRepository() {
       const parentStatus = getParentStatus(category);
       const { attendeeCount } = normalizeRegistrationCounts(payload);
       const { lunchBoxCount } = normalizeRegistrationCounts(payload);
+      const draftRegistrationId = normalizeText(payload.registrationId || payload.registration_id || payload.id);
+      const draftIndex = draftRegistrationId
+        ? store.registrations.findIndex(row => row.id === draftRegistrationId || row.registrationId === draftRegistrationId)
+        : -1;
+      const draftRegistration = draftIndex >= 0 ? store.registrations[draftIndex] : null;
+      const reusableDraft = draftRegistration
+        && !normalizeText(draftRegistration.paymentProofFilename)
+        && (!normalizeText(draftRegistration.paymentStatus) || normalizeText(draftRegistration.paymentStatus) === 'pending');
       const verification = await verifyJsonStudentName(store, {
         studentName: payload.studentName,
         parentStatus
@@ -823,7 +849,8 @@ async function createJsonRepository() {
         const duplicateCheck = checkJsonExistingRegistration(store, {
           matchedStudentId: verification.matchedStudentId,
           studentName: payload.studentName,
-          parentStatus
+          parentStatus,
+          excludeRegistrationId: reusableDraft ? draftRegistration.id : null
         });
 
         if (duplicateCheck.exists) {
@@ -833,10 +860,18 @@ async function createJsonRepository() {
         }
       }
 
+      if (verificationStatus === 'verified'
+        && getUsedSeatCount(store.registrations) + attendeeCount > ticketQuota) {
+        const error = new Error('Ticket quota is full.');
+        error.statusCode = 400;
+        throw error;
+      }
+
       const now = new Date().toISOString();
       const registration = {
-        id: randomUUID(),
-        registrationId: createRegistrationId(store.registrations),
+        ...(reusableDraft ? draftRegistration : {}),
+        id: reusableDraft ? draftRegistration.id : randomUUID(),
+        registrationId: reusableDraft ? draftRegistration.registrationId : createRegistrationId(store.registrations),
         parentCategory: category,
         parentStatus,
         waitingListStatus: normalizeText(payload.waitingListStatus),
@@ -859,10 +894,14 @@ async function createJsonRepository() {
         status: 'confirmed',
         notes: '',
         checkedInAt: '',
-        createdAt: now,
+        createdAt: reusableDraft ? draftRegistration.createdAt : now,
         updatedAt: now
       };
-      store.registrations.push(registration);
+      if (reusableDraft) {
+        store.registrations[draftIndex] = registration;
+      } else {
+        store.registrations.push(registration);
+      }
       await writeStore(store);
       const publicRegistration = { ...registration };
       delete publicRegistration.duplicateReferenceId;
@@ -904,18 +943,26 @@ async function createJsonRepository() {
         throw error;
       }
 
-      const attendeeCount = normalizeCount(current.attendeeCount, 1);
+      const { attendeeCount, lunchBoxCount } = normalizeRegistrationCounts(payload);
       const existingRows = store.registrations.filter(row => row.id !== current.id);
+      const currentSeatCount = getUsedSeatCount([{ seatNumber: current.seatNumber }]);
 
-      if (!normalizeText(current.seatNumber) && getUsedSeatCount(existingRows) + attendeeCount > ticketQuota) {
+      if ((!normalizeText(current.seatNumber) || currentSeatCount !== attendeeCount)
+        && getUsedSeatCount(existingRows) + attendeeCount > ticketQuota) {
         const error = new Error('Ticket quota is full.');
         error.statusCode = 400;
         throw error;
       }
 
+      const seatNumber = (!normalizeText(current.seatNumber) || currentSeatCount !== attendeeCount)
+        ? createSeatNumbers(attendeeCount, existingRows)
+        : normalizeText(current.seatNumber);
+
       const next = {
         ...current,
-        seatNumber: normalizeText(current.seatNumber) || createSeatNumbers(attendeeCount, existingRows),
+        attendeeCount,
+        lunchBoxCount,
+        seatNumber,
         ticketPrice,
         totalAmount: attendeeCount * ticketPrice,
         paymentStatus: 'pending',
@@ -1018,6 +1065,15 @@ async function createPostgresRepository() {
     );
     let bestMatch = null;
     let bestSimilarity = 0;
+    const exactMatch = result.rows.find(student => normalizeName(student.student_name) === normalizedInputName);
+
+    if (exactMatch) {
+      return {
+        status: 'verified',
+        matchedStudentId: exactMatch.id,
+        notes: 'Verified by normalized student name.'
+      };
+    }
 
     result.rows.forEach(student => {
       const similarity = calculateNameSimilarity(student.student_name, normalizedInputName);
@@ -1050,22 +1106,28 @@ async function createPostgresRepository() {
     };
   }
 
-  async function checkExistingRegistration({ matchedStudentId, studentName, parentStatus }) {
+  async function checkExistingRegistration({ matchedStudentId, studentName, parentStatus, excludeRegistrationId = null }) {
     await ensureVerificationSchema(pool);
+    const excludedId = normalizeText(excludeRegistrationId);
 
     if (matchedStudentId) {
+      const params = [matchedStudentId];
+      const excludeClause = excludedId
+        ? `AND id::text <> $${params.push(excludedId)} AND registration_id <> $${params.length}`
+        : '';
       const result = await pool.query(
         `SELECT id, registration_id, student_name, parent_status, verification_status, payment_status, created_at
          FROM registrations
          WHERE matched_student_id = $1
+           ${excludeClause}
            AND verification_status = 'verified'
            AND (
              payment_status IS NULL
              OR payment_status IN ('pending', 'verified', 'paid', 'confirmed', 'waiting_confirmation')
-           )
+         )
          ORDER BY created_at ASC
          LIMIT 1`,
-        [matchedStudentId]
+        params
       );
 
       if (result.rows.length > 0) {
@@ -1088,19 +1150,24 @@ async function createPostgresRepository() {
       };
     }
 
+    const params = [normalizedName, normalizedParentStatus];
+    const excludeClause = excludedId
+      ? `AND id::text <> $${params.push(excludedId)} AND registration_id <> $${params.length}`
+      : '';
     const fallbackResult = await pool.query(
       `SELECT id, registration_id, student_name, parent_status, verification_status, payment_status, created_at
        FROM registrations
        WHERE LOWER(TRIM(REGEXP_REPLACE(student_name, '\\s+', ' ', 'g'))) = $1
          AND LOWER(TRIM(REGEXP_REPLACE(parent_status, '\\s+', ' ', 'g'))) = $2
+         ${excludeClause}
          AND verification_status = 'verified'
          AND (
            payment_status IS NULL
            OR payment_status IN ('pending', 'verified', 'paid', 'confirmed', 'waiting_confirmation')
-         )
+       )
        ORDER BY created_at ASC
        LIMIT 1`,
-      [normalizedName, normalizedParentStatus]
+      params
     );
 
     if (fallbackResult.rows.length > 0) {
@@ -1186,6 +1253,20 @@ async function createPostgresRepository() {
       const category = normalizeText(payload.category || payload.parentCategory);
       const parentStatus = getParentStatus(category);
       const { attendeeCount, lunchBoxCount } = normalizeRegistrationCounts(payload);
+      const draftRegistrationId = normalizeText(payload.registrationId || payload.registration_id || payload.id);
+      let draftRegistration = null;
+
+      if (draftRegistrationId) {
+        const draftResult = await pool.query(
+          `SELECT * FROM registrations WHERE id::text = $1 OR registration_id = $1 LIMIT 1`,
+          [draftRegistrationId]
+        );
+        draftRegistration = draftResult.rows[0] || null;
+      }
+
+      const reusableDraft = draftRegistration
+        && !normalizeText(draftRegistration.payment_proof_data)
+        && (!normalizeText(draftRegistration.payment_status) || normalizeText(draftRegistration.payment_status) === 'pending');
       const verification = await verifyStudentName({
         studentName: payload.studentName,
         parentStatus
@@ -1198,7 +1279,8 @@ async function createPostgresRepository() {
         const duplicateCheck = await checkExistingRegistration({
           matchedStudentId: verification.matchedStudentId,
           studentName: payload.studentName,
-          parentStatus
+          parentStatus,
+          excludeRegistrationId: reusableDraft ? draftRegistration.id : null
         });
 
         if (duplicateCheck.exists) {
@@ -1208,11 +1290,26 @@ async function createPostgresRepository() {
         }
       }
 
-      const nextResult = await pool.query(
+      if (verificationStatus === 'verified') {
+        const existingSeatResult = await pool.query(
+          `SELECT seat_number FROM registrations WHERE seat_number IS NOT NULL`
+        );
+        const usedSeats = getUsedSeatCount(existingSeatResult.rows.map(row => ({ seatNumber: row.seat_number })));
+
+        if (usedSeats + attendeeCount > ticketQuota) {
+          const error = new Error('Ticket quota is full.');
+          error.statusCode = 400;
+          throw error;
+        }
+      }
+
+      const nextResult = reusableDraft ? null : await pool.query(
         `SELECT COALESCE(MAX(id), 0) + 1 AS next_id FROM registrations`
       );
-      const nextId = Number(nextResult.rows[0].next_id);
-      const registrationId = `GPS-2026-${String(nextId).padStart(4, '0')}`;
+      const nextId = reusableDraft ? null : Number(nextResult.rows[0].next_id);
+      const registrationId = reusableDraft
+        ? draftRegistration.registration_id
+        : `GPS-2026-${String(nextId).padStart(4, '0')}`;
 
       const values = [
         registrationId,
@@ -1234,8 +1331,33 @@ async function createPostgresRepository() {
         attendeeCount * ticketPrice
       ];
 
-      const result = await pool.query(
-        `INSERT INTO registrations (
+      const result = reusableDraft
+        ? await pool.query(
+          `UPDATE registrations
+           SET parent_category = $2,
+               parent_status = $3,
+               waiting_list_status = NULLIF($4, ''),
+               student_level = $5,
+               student_name = $6,
+               parent_name = $7,
+               phone = $8,
+               email = $9,
+               attendee_count = $10,
+               lunch_box_count = $11,
+               verification_status = $12,
+               matched_student_id = $13,
+               duplicate_reference_id = $14,
+               verification_notes = $15,
+               ticket_price = $16,
+               total_amount = $17,
+               payment_status = 'pending',
+               seat_number = NULL
+           WHERE id = $18
+           RETURNING *`,
+          [...values, draftRegistration.id]
+        )
+        : await pool.query(
+          `INSERT INTO registrations (
           registration_id,
           parent_category,
           parent_status,
@@ -1258,8 +1380,8 @@ async function createPostgresRepository() {
           $11, $12, $13, $14, $15, $16, $17
         )
         RETURNING *`,
-        values
-      );
+          values
+        );
 
       const registration = toCamelRow(result.rows[0]);
       const publicRegistration = { ...registration };
@@ -1304,10 +1426,11 @@ async function createPostgresRepository() {
         throw error;
       }
 
-      const attendeeCount = normalizeCount(current.attendee_count, 1);
+      const { attendeeCount, lunchBoxCount } = normalizeRegistrationCounts(payload);
       let seats = normalizeText(current.seat_number);
+      const currentSeatCount = getUsedSeatCount([{ seatNumber: seats }]);
 
-      if (!seats) {
+      if (!seats || currentSeatCount !== attendeeCount) {
         const existingSeatResult = await pool.query(
           `SELECT seat_number FROM registrations WHERE id <> $1 AND seat_number IS NOT NULL`,
           [current.id]
@@ -1328,16 +1451,20 @@ async function createPostgresRepository() {
       const result = await pool.query(
         `UPDATE registrations
          SET seat_number = $1,
-             payment_proof_filename = NULLIF($2, ''),
-             payment_proof_mime_type = NULLIF($3, ''),
-             payment_proof_data = NULLIF($4, ''),
-             ticket_price = $5,
-             total_amount = $6,
+             attendee_count = $2,
+             lunch_box_count = $3,
+             payment_proof_filename = NULLIF($4, ''),
+             payment_proof_mime_type = NULLIF($5, ''),
+             payment_proof_data = NULLIF($6, ''),
+             ticket_price = $7,
+             total_amount = $8,
              payment_status = 'pending'
-         WHERE id = $7
+         WHERE id = $9
          RETURNING *`,
         [
           seats,
+          attendeeCount,
+          lunchBoxCount,
           proof.filename,
           proof.mimeType,
           proof.base64Data,

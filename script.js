@@ -4,7 +4,7 @@
   'hero-subtitle': '',
   'event-date': 'Sabtu, 20 Juni 2026',
   'event-time': '08:00 - 16:00 WIB',
-  'event-venue': 'Exibition Hall, Summarecon Bandung',
+  'event-venue': 'Exibition Hall (Lantai 3), Summarecon Mall Bandung',
   'hero-cta': 'Daftar Sekarang',
   'about-title': 'APA ITU GLOBAL PARENTING SUMMIT?',
   'about-desc-1': 'Global Parenting Summit adalah forum edukasi tahunan yang diinisiasi oleh Kreativa Global School untuk mendukung orang tua dalam menghadapi tantangan mendampingi anak di dunia yang terus berubah dengan cepat.',
@@ -51,6 +51,14 @@ function normalizeVisibleUrl() {
   if (window.location.pathname.endsWith('/index.html')) {
     window.history.replaceState({}, '', window.location.pathname.replace(/\/index\.html$/, '/') + window.location.search + window.location.hash);
   }
+}
+
+function normalizeInputValue(value) {
+  return String(value || '')
+    .normalize('NFKC')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .trim()
+    .replace(/\s+/g, ' ');
 }
 
 function fillTemplateContent() {
@@ -129,9 +137,35 @@ function showPaymentSection(form, registration) {
 function resetVerificationState() {
   document.querySelectorAll('form').forEach(form => {
     delete form.dataset.registrationId;
+    delete form.dataset.draftRegistrationId;
     delete form.dataset.verificationStatus;
     hidePaymentSections(form);
   });
+}
+
+function clearPaymentProofSelection(form) {
+  form.querySelectorAll('[name="paymentProof"]').forEach(input => {
+    input.value = '';
+    const preview = input.closest('.upload-zone')?.querySelector('.upload-preview');
+    if (preview) {
+      preview.classList.add('hidden');
+      preview.innerHTML = '';
+    }
+  });
+}
+
+function resetFormVerificationState(form) {
+  if (form.dataset.registrationId) {
+    form.dataset.draftRegistrationId = form.dataset.registrationId;
+  }
+
+  delete form.dataset.registrationId;
+  delete form.dataset.verificationStatus;
+  currentRegistration = null;
+  generatedSeatNumber = '';
+  hideResultSections();
+  hidePaymentSections(form);
+  clearPaymentProofSelection(form);
 }
 
 function handleParentTypeChange(event) {
@@ -220,6 +254,15 @@ function setupAttendanceLunchSync() {
     });
 
     updatePriceSummary(form);
+  });
+}
+
+function setupIdentityChangeReset() {
+  document.querySelectorAll('form').forEach(form => {
+    form.querySelectorAll('[name="studentName"], [name="studentLevel"], [name="waitingListStatus"]').forEach(input => {
+      input.addEventListener('input', () => resetFormVerificationState(form));
+      input.addEventListener('change', () => resetFormVerificationState(form));
+    });
   });
 }
 
@@ -490,14 +533,14 @@ async function buildRegistrationPayload(form, options = {}) {
 
   const payload = {
     action: includePaymentProof ? 'payment' : 'verify',
-    registrationId: form.dataset.registrationId || '',
+    registrationId: form.dataset.registrationId || form.dataset.draftRegistrationId || '',
     category: getSelectedCategory(),
-    waitingListStatus: String(formData.get('waitingListStatus') || ''),
-    studentLevel: String(formData.get('studentLevel') || ''),
-    studentName: String(formData.get('studentName') || ''),
-    parentName: String(formData.get('parentName') || ''),
-    phone: String(formData.get('phone') || ''),
-    email: String(formData.get('email') || ''),
+    waitingListStatus: normalizeInputValue(formData.get('waitingListStatus')),
+    studentLevel: normalizeInputValue(formData.get('studentLevel')),
+    studentName: normalizeInputValue(formData.get('studentName')),
+    parentName: normalizeInputValue(formData.get('parentName')),
+    phone: normalizeInputValue(formData.get('phone')),
+    email: normalizeInputValue(formData.get('email')),
     attendeeCount,
     lunchBoxCount: attendeeCount,
     paymentProofFilename: preparedPaymentProof.filename,
@@ -607,6 +650,29 @@ function showTicketConfirmation(registration) {
   loadConfig();
 }
 
+function finishRegistration() {
+  document.querySelectorAll('form').forEach(form => {
+    form.reset();
+    delete form.dataset.registrationId;
+    delete form.dataset.draftRegistrationId;
+    delete form.dataset.verificationStatus;
+    clearPaymentProofSelection(form);
+    updatePriceSummary(form);
+  });
+
+  const parentType = document.getElementById('parent-type');
+  if (parentType) {
+    parentType.value = '';
+  }
+
+  currentRegistration = null;
+  generatedSeatNumber = '';
+  resetFlows();
+  updateWaitingListStatusFlow();
+  document.getElementById('confirmation')?.classList.add('hidden');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 async function showConfirmation(event) {
   event.preventDefault();
 
@@ -711,7 +777,8 @@ function downloadTicket() {
   ctx.font = '14px Poppins, sans-serif';
   ctx.fillText('Tanggal: Sabtu, 20 Juni 2026', 300, 330);
   ctx.fillText('Waktu: 08:00 - 16:00 WIB', 300, 360);
-  ctx.fillText('Tempat: Exibition Hall, Summarecon Bandung', 300, 390);
+  ctx.fillText('Tempat: Exibition Hall (Lantai 3),', 300, 390);
+  ctx.fillText('Summarecon Mall Bandung', 300, 420);
 
   ctx.fillStyle = '#1a2744';
   ctx.font = 'bold 16px Poppins, sans-serif';
@@ -774,6 +841,7 @@ function initPage() {
   normalizeVisibleUrl();
   fillTemplateContent();
   document.getElementById('parent-type').addEventListener('change', handleParentTypeChange);
+  setupIdentityChangeReset();
   setupAttendanceLunchSync();
   setupWaitingListStatus();
   setupUploadZones();
@@ -789,6 +857,7 @@ function initPage() {
 window.generateSeatNumber = generateSeatNumber;
 window.showConfirmation = showConfirmation;
 window.downloadTicket = downloadTicket;
+window.finishRegistration = finishRegistration;
 
 document.addEventListener('DOMContentLoaded', initPage);
 
