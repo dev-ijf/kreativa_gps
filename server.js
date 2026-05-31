@@ -1246,7 +1246,7 @@ async function createPostgresRepository() {
     const result = await pool.query(
       `SELECT id, student_name, parent_status, grade
        FROM eligible_students
-       WHERE parent_status = $1`,
+       WHERE parent_status = $1::text`,
       [parentStatus]
     );
     let bestMatch = null;
@@ -1304,7 +1304,7 @@ async function createPostgresRepository() {
       const result = await pool.query(
         `SELECT id, registration_id, student_name, parent_status, verification_status, payment_status, created_at
          FROM registrations
-         WHERE matched_student_id = $1
+         WHERE matched_student_id = $1::integer
            ${excludeClause}
            AND verification_status = 'verified'
            AND (
@@ -1349,8 +1349,8 @@ async function createPostgresRepository() {
     const fallbackResult = await pool.query(
       `SELECT id, registration_id, student_name, parent_status, verification_status, payment_status, created_at
        FROM registrations
-       WHERE LOWER(TRIM(REGEXP_REPLACE(student_name, '\\s+', ' ', 'g'))) = $1
-         AND LOWER(TRIM(REGEXP_REPLACE(parent_status, '\\s+', ' ', 'g'))) = $2
+       WHERE LOWER(TRIM(REGEXP_REPLACE(student_name, '\\s+', ' ', 'g'))) = $1::text
+         AND LOWER(TRIM(REGEXP_REPLACE(parent_status, '\\s+', ' ', 'g'))) = $2::text
          ${excludeClause}
          AND verification_status = 'verified'
          AND (
@@ -1486,7 +1486,7 @@ async function createPostgresRepository() {
       await ensureVerificationSchema(pool);
       const result = await pool.query(
         `INSERT INTO eligible_students (student_name, parent_status, grade)
-         VALUES ($1, $2, NULLIF($3, ''))
+         VALUES ($1::text, $2::text, NULLIF($3::text, ''))
          RETURNING id, student_name, parent_status, grade, created_at`,
         [
           normalizeText(payload.studentName || payload.student_name),
@@ -1648,7 +1648,7 @@ async function createPostgresRepository() {
           `UPDATE registrations
            SET parent_category = $2,
                parent_status = $3,
-               waiting_list_status = NULLIF($4, ''),
+               waiting_list_status = NULLIF($4::text, ''),
                student_level = $5,
                student_name = $6,
                parent_name = $7,
@@ -1688,7 +1688,7 @@ async function createPostgresRepository() {
           ticket_price,
           total_amount
         ) VALUES (
-          $1, $2, $3, NULLIF($4, ''), $5, $6, $7, $8, $9, $10,
+          $1, $2, $3, NULLIF($4::text, ''), $5, $6, $7, $8, $9, $10,
           $11, $12, $13, $14, $15, $16, $17
         )
         RETURNING *`,
@@ -1777,7 +1777,7 @@ async function createPostgresRepository() {
 
       if (!seats || currentSeatCount !== attendeeCount) {
         const existingSeatResult = await pool.query(
-          `SELECT seat_number FROM registrations WHERE id <> $1 AND seat_number IS NOT NULL`,
+          `SELECT seat_number FROM registrations WHERE id <> $1::integer AND seat_number IS NOT NULL`,
           [current.id]
         );
         const existingSeats = existingSeatResult.rows.map(row => ({ seatNumber: row.seat_number }));
@@ -1883,7 +1883,7 @@ async function createPostgresRepository() {
       const result = await pool.query(
         `SELECT payment_proof_filename, payment_proof_mime_type, payment_proof_data
          FROM registrations
-         WHERE payment_proof_filename = $1
+         WHERE payment_proof_filename = $1::text
          LIMIT 1`,
         [filename]
       );
