@@ -220,6 +220,22 @@ button:disabled {
   max-width: 100%;
 }
 
+.admin-tab {
+  color: #64748b;
+  background: transparent;
+  transition: all 0.2s ease;
+}
+
+.admin-tab:hover {
+  color: #1f3f8f;
+  background: #f3f7ff;
+}
+
+.admin-tab.is-active {
+  color: #fff;
+  background: #1f3f8f;
+}
+
 @media (max-width: 1023px) {
   .admin-table-wrap {
     overflow-x: auto;

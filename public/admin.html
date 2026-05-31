@@ -59,6 +59,20 @@
     </div>
    </section>
 
+   <section class="bg-white border border-slate-200 rounded-xl p-2 mb-5">
+    <div class="flex flex-col sm:flex-row gap-2">
+     <button id="registrations-tab" data-admin-tab="registrations" class="admin-tab is-active inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-semibold text-sm">
+      <i data-lucide="clipboard-list" class="w-5 h-5"></i>
+      Registrasi
+     </button>
+     <button id="students-tab" data-admin-tab="students" class="admin-tab inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-semibold text-sm">
+      <i data-lucide="graduation-cap" class="w-5 h-5"></i>
+      Data Siswa
+     </button>
+    </div>
+   </section>
+
+   <div id="registrations-panel" data-admin-panel="registrations">
    <section class="bg-white border border-slate-200 rounded-xl p-4 md:p-5 mb-5">
     <div class="grid md:grid-cols-[1fr_180px_180px_180px_auto] gap-3">
      <input id="search-input" type="search" placeholder="Search name, email, phone, ID, seat" class="w-full p-3 rounded-lg border border-slate-200">
@@ -114,8 +128,88 @@
       <tbody id="registrations-body" class="divide-y divide-slate-100"></tbody>
      </table>
     </div>
-    <div id="empty-state" class="hidden p-10 text-center text-slate-500">No registrations found.</div>
+   <div id="empty-state" class="hidden p-10 text-center text-slate-500">No registrations found.</div>
    </section>
+   </div>
+
+   <div id="students-panel" data-admin-panel="students" class="hidden">
+    <section class="bg-white border border-slate-200 rounded-xl p-4 md:p-5 mb-5">
+     <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-5">
+     <div>
+       <h2 class="text-2xl font-bold text-[#1a2744]">Data Siswa</h2>
+       <p class="text-slate-500 mt-1">Kelola daftar siswa yang berhak lanjut ke pembayaran.</p>
+      </div>
+     </div>
+     <div class="mb-4 rounded-lg bg-blue-50 border border-blue-100 px-4 py-3">
+      <h3 class="font-semibold text-[#1a2744]">Tambah Data Siswa Baru</h3>
+      <p class="text-sm text-slate-600 mt-1">Gunakan form ini untuk menambahkan siswa baru. Untuk mengubah data yang sudah ada, klik ikon edit pada baris siswa di tabel.</p>
+     </div>
+     <form id="student-form" class="grid md:grid-cols-[1.5fr_220px_180px_auto] gap-3">
+      <input type="hidden" name="id">
+      <input name="studentName" type="text" placeholder="Nama lengkap siswa" class="w-full p-3 rounded-lg border border-slate-200" required>
+      <select name="parentStatus" class="w-full p-3 rounded-lg border border-slate-200" required>
+       <option value="">Kategori</option>
+       <option value="existing_parent">Siswa Aktif 2026/2027</option>
+       <option value="waiting_list_parent">Waiting List 2027/2028</option>
+      </select>
+      <select name="grade" class="w-full p-3 rounded-lg border border-slate-200">
+       <option value="">Grade</option>
+       <option>Kindergarten 1</option>
+       <option>Kindergarten 2</option>
+       <option>Grade 1</option>
+       <option>Grade 2</option>
+       <option>Grade 3</option>
+       <option>Grade 7</option>
+       <option>Grade 10</option>
+      </select>
+      <div class="flex gap-2">
+       <button id="student-submit-btn" type="submit" class="inline-flex flex-1 items-center justify-center gap-2 px-5 py-3 rounded-lg bg-[#1f3f8f] text-white font-medium">
+        <i data-lucide="save" class="w-5 h-5"></i>
+        Simpan
+       </button>
+       <button id="student-cancel-btn" type="button" class="hidden inline-flex items-center justify-center px-4 py-3 rounded-lg bg-slate-100 text-slate-700 font-medium">Batal</button>
+      </div>
+     </form>
+    </section>
+
+    <section class="bg-white border border-slate-200 rounded-xl p-4 md:p-5 mb-5">
+     <div class="grid md:grid-cols-[1fr_240px_auto] gap-3">
+      <input id="student-search-input" type="search" placeholder="Cari nama siswa atau grade" class="w-full p-3 rounded-lg border border-slate-200">
+      <select id="student-status-filter" class="w-full p-3 rounded-lg border border-slate-200">
+       <option value="">Semua Kategori</option>
+       <option value="existing_parent">Siswa Aktif 2026/2027</option>
+       <option value="waiting_list_parent">Waiting List 2027/2028</option>
+      </select>
+      <button id="student-refresh-btn" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-[#1a2744] text-white font-medium">
+       <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+       Refresh
+      </button>
+     </div>
+    </section>
+
+    <section class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+     <div class="admin-table-wrap">
+      <table class="admin-table w-full table-fixed text-sm">
+       <colgroup>
+        <col class="w-[42%]">
+        <col class="w-[28%]">
+        <col class="w-[18%]">
+        <col class="w-[12%]">
+       </colgroup>
+       <thead class="bg-slate-50 text-slate-500">
+        <tr>
+         <th class="text-left font-semibold px-3 py-3">Nama Siswa</th>
+         <th class="text-left font-semibold px-3 py-3">Kategori</th>
+         <th class="text-left font-semibold px-3 py-3">Grade</th>
+         <th class="text-right font-semibold px-3 py-3">Actions</th>
+        </tr>
+       </thead>
+       <tbody id="students-body" class="divide-y divide-slate-100"></tbody>
+      </table>
+     </div>
+     <div id="students-empty-state" class="hidden p-10 text-center text-slate-500">Data siswa belum ada.</div>
+    </section>
+   </div>
   </main>
   <script src="admin.js"></script>
  </body>

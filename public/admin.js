@@ -8,10 +8,23 @@ const refreshButton = document.getElementById('refresh-btn');
 const quotaTotal = document.getElementById('admin-quota-total');
 const quotaUsed = document.getElementById('admin-quota-used');
 const quotaRemaining = document.getElementById('admin-quota-remaining');
+const tabButtons = document.querySelectorAll('[data-admin-tab]');
+const tabPanels = document.querySelectorAll('[data-admin-panel]');
+const studentsBody = document.getElementById('students-body');
+const studentsEmptyState = document.getElementById('students-empty-state');
+const studentForm = document.getElementById('student-form');
+const studentSubmitButton = document.getElementById('student-submit-btn');
+const studentCancelButton = document.getElementById('student-cancel-btn');
+const studentSearchInput = document.getElementById('student-search-input');
+const studentStatusFilter = document.getElementById('student-status-filter');
+const studentRefreshButton = document.getElementById('student-refresh-btn');
 
 const paymentOptions = ['pending', 'verified', 'rejected'];
 const statusOptions = ['confirmed', 'attended', 'cancelled'];
 let currentRows = [];
+let currentStudents = [];
+let studentsLoaded = false;
+let editingStudentId = null;
 
 function escapeHtml(value) {
   return String(value || '')
@@ -39,6 +52,12 @@ function optionHtml(options, selected) {
 
 function formatCategory(category) {
   return category === 'existing' ? 'Existing Parent' : 'Waiting List';
+}
+
+function formatStudentParentStatus(parentStatus) {
+  return parentStatus === 'existing_parent'
+    ? 'Siswa Aktif 2026/2027'
+    : 'Waiting List 2027/2028';
 }
 
 function formatDate(value) {
@@ -366,6 +385,197 @@ function renderRows(rows) {
   }
 }
 
+function buildStudentQuery() {
+  const params = new URLSearchParams();
+
+  if (studentSearchInput.value.trim()) {
+    params.set('search', studentSearchInput.value.trim());
+  }
+
+  if (studentStatusFilter.value) {
+    params.set('parentStatus', studentStatusFilter.value);
+  }
+
+  return params.toString();
+}
+
+async function loadEligibleStudents() {
+  studentsBody.innerHTML = '<tr><td colspan="4" class="px-4 py-8 text-center text-slate-500">Loading...</td></tr>';
+
+  const query = buildStudentQuery();
+  const response = await fetch(`/api/eligible-students${query ? `?${query}` : ''}`);
+  const result = await response.json();
+
+  if (!response.ok) {
+    studentsBody.innerHTML = `<tr><td colspan="4" class="px-4 py-8 text-center text-red-600">${result.error || 'Failed to load student data.'}</td></tr>`;
+    return;
+  }
+
+  currentStudents = result.students || [];
+  studentsLoaded = true;
+  renderEligibleStudents(currentStudents);
+}
+
+function renderEligibleStudents(rows) {
+  studentsEmptyState.classList.toggle('hidden', rows.length > 0);
+
+  if (!rows.length) {
+    studentsBody.innerHTML = '';
+    return;
+  }
+
+  studentsBody.innerHTML = rows.map(student => {
+    const isEditing = String(student.id) === String(editingStudentId);
+    return `
+    <tr data-id="${escapeHtml(student.id)}" class="align-top">
+      <td class="px-3 py-4">
+        ${isEditing
+          ? `<input data-student-field="studentName" value="${escapeHtml(student.studentName)}" class="w-full p-2 rounded-lg border border-slate-200 text-sm font-semibold text-[#1a2744]">`
+          : `<div class="font-semibold text-[#1a2744] leading-snug">${escapeHtml(student.studentName)}</div>`}
+      </td>
+      <td class="px-3 py-4">
+        ${isEditing ? `
+        <select data-student-field="parentStatus" class="w-full p-2 rounded-lg border border-slate-200 text-sm">
+          <option value="existing_parent" ${student.parentStatus === 'existing_parent' ? 'selected' : ''}>Siswa Aktif 2026/2027</option>
+          <option value="waiting_list_parent" ${student.parentStatus === 'waiting_list_parent' ? 'selected' : ''}>Waiting List 2027/2028</option>
+        </select>
+        ` : `<span class="inline-flex px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 leading-tight">${formatStudentParentStatus(student.parentStatus)}</span>`}
+      </td>
+      <td class="px-3 py-4">
+        ${isEditing ? `
+        <select data-student-field="grade" class="w-full p-2 rounded-lg border border-slate-200 text-sm">
+          <option value="">Grade</option>
+          ${['Kindergarten 1', 'Kindergarten 2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 7', 'Grade 10'].map(grade => `<option value="${grade}" ${student.grade === grade ? 'selected' : ''}>${grade}</option>`).join('')}
+        </select>
+        ` : `<span class="text-slate-600">${escapeHtml(student.grade || '-')}</span>`}
+      </td>
+      <td class="px-3 py-4">
+        <div class="flex items-center justify-end gap-1.5">
+          ${isEditing ? `
+          <button data-action="save-student-row" title="Save student" aria-label="Save ${escapeHtml(student.studentName)}" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-[#1f3f8f] bg-blue-50 hover:bg-blue-100">
+            <i data-lucide="save" class="w-5 h-5"></i>
+          </button>
+          <button data-action="cancel-student-edit" title="Cancel edit" aria-label="Cancel edit for ${escapeHtml(student.studentName)}" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-slate-700 bg-slate-100 hover:bg-slate-200">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+          ` : `
+          <button data-action="edit-student" title="Edit student" aria-label="Edit ${escapeHtml(student.studentName)}" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-[#1f3f8f] bg-blue-50 hover:bg-blue-100">
+            <i data-lucide="pencil" class="w-5 h-5"></i>
+          </button>
+          `}
+          <button data-action="delete-student" title="Delete student" aria-label="Delete ${escapeHtml(student.studentName)}" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-red-700 bg-red-50 hover:bg-red-100">
+            <i data-lucide="trash-2" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </td>
+    </tr>
+  `;
+  }).join('');
+
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
+}
+
+function resetStudentForm() {
+  studentForm.reset();
+  studentForm.elements.id.value = '';
+  studentSubmitButton.innerHTML = '<i data-lucide="save" class="w-5 h-5"></i>Simpan';
+  studentCancelButton.classList.add('hidden');
+
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
+}
+
+function fillStudentForm(student) {
+  studentForm.elements.id.value = student.id;
+  studentForm.elements.studentName.value = student.studentName || '';
+  studentForm.elements.parentStatus.value = student.parentStatus || '';
+  studentForm.elements.grade.value = student.grade || '';
+  studentSubmitButton.innerHTML = '<i data-lucide="save" class="w-5 h-5"></i>Update';
+  studentCancelButton.classList.remove('hidden');
+  studentForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
+}
+
+async function saveEligibleStudent(event) {
+  event.preventDefault();
+  const id = studentForm.elements.id.value;
+  const payload = {
+    studentName: studentForm.elements.studentName.value,
+    parentStatus: studentForm.elements.parentStatus.value,
+    grade: studentForm.elements.grade.value
+  };
+
+  const response = await fetch(id ? `/api/eligible-students/${encodeURIComponent(id)}` : '/api/eligible-students', {
+    method: id ? 'PATCH' : 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || 'Failed to save student data.');
+  }
+
+  resetStudentForm();
+  await loadEligibleStudents();
+}
+
+async function deleteEligibleStudent(id) {
+  const response = await fetch(`/api/eligible-students/${encodeURIComponent(id)}`, {
+    method: 'DELETE'
+  });
+
+  if (!response.ok) {
+    const result = await response.json();
+    throw new Error(result.error || 'Failed to delete student data.');
+  }
+}
+
+function readStudentRowPayload(row) {
+  return {
+    studentName: row.querySelector('[data-student-field="studentName"]')?.value || '',
+    parentStatus: row.querySelector('[data-student-field="parentStatus"]')?.value || '',
+    grade: row.querySelector('[data-student-field="grade"]')?.value || ''
+  };
+}
+
+async function updateEligibleStudentRow(id, payload) {
+  const response = await fetch(`/api/eligible-students/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || 'Failed to update student data.');
+  }
+}
+
+async function switchAdminTab(tabName) {
+  tabButtons.forEach(button => {
+    button.classList.toggle('is-active', button.dataset.adminTab === tabName);
+  });
+
+  tabPanels.forEach(panel => {
+    panel.classList.toggle('hidden', panel.dataset.adminPanel !== tabName);
+  });
+
+  if (tabName === 'students' && !studentsLoaded) {
+    await loadEligibleStudents();
+  }
+}
+
 async function updateRegistration(id, patch) {
   const response = await fetch(`/api/registrations/${encodeURIComponent(id)}`, {
     method: 'PATCH',
@@ -478,8 +688,89 @@ tableBody.addEventListener('click', async event => {
   filter.addEventListener('change', loadRegistrations);
 });
 
+tabButtons.forEach(button => {
+  button.addEventListener('click', () => {
+    switchAdminTab(button.dataset.adminTab).catch(error => alert(error.message));
+  });
+});
+
 searchInput.addEventListener('input', debounce(loadRegistrations));
 refreshButton.addEventListener('click', loadRegistrations);
+
+studentSearchInput.addEventListener('input', debounce(loadEligibleStudents));
+studentStatusFilter.addEventListener('change', loadEligibleStudents);
+studentRefreshButton.addEventListener('click', loadEligibleStudents);
+studentCancelButton.addEventListener('click', resetStudentForm);
+studentForm.addEventListener('submit', event => {
+  saveEligibleStudent(event).catch(error => alert(error.message));
+});
+
+studentsBody.addEventListener('click', async event => {
+  const editButton = event.target.closest('[data-action="edit-student"]');
+  const saveButton = event.target.closest('[data-action="save-student-row"]');
+  const cancelButton = event.target.closest('[data-action="cancel-student-edit"]');
+  const deleteButton = event.target.closest('[data-action="delete-student"]');
+
+  if (editButton) {
+    const row = editButton.closest('tr');
+    editingStudentId = row.dataset.id;
+    renderEligibleStudents(currentStudents);
+    return;
+  }
+
+  if (cancelButton) {
+    editingStudentId = null;
+    renderEligibleStudents(currentStudents);
+    return;
+  }
+
+  if (saveButton) {
+    const row = saveButton.closest('tr');
+    const originalIcon = saveButton.innerHTML;
+    saveButton.disabled = true;
+    saveButton.innerHTML = '<i data-lucide="loader-2" class="w-5 h-5"></i>';
+
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+
+    try {
+      await updateEligibleStudentRow(row.dataset.id, readStudentRowPayload(row));
+      editingStudentId = null;
+      await loadEligibleStudents();
+    } catch (error) {
+      alert(error.message);
+      saveButton.disabled = false;
+      saveButton.innerHTML = originalIcon;
+      if (window.lucide) {
+        window.lucide.createIcons();
+      }
+    }
+
+    return;
+  }
+
+  if (deleteButton) {
+    const row = deleteButton.closest('tr');
+    const student = currentStudents.find(item => String(item.id) === String(row.dataset.id));
+    const confirmed = confirm(`Hapus data siswa ${student?.studentName || ''}?`);
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await deleteEligibleStudent(row.dataset.id);
+      if (String(editingStudentId) === String(row.dataset.id)) {
+        editingStudentId = null;
+      }
+      resetStudentForm();
+      await loadEligibleStudents();
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+});
 
 if (window.lucide) {
   window.lucide.createIcons();

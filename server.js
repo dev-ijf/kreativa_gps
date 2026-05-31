@@ -58,6 +58,7 @@ const allowedUpdates = new Set([
   'attendeeCount',
   'lunchBoxCount'
 ]);
+const eligibleParentStatuses = new Set(['existing_parent', 'waiting_list_parent']);
 
 const paymentStatuses = new Set(['pending', 'verified', 'rejected', 'paid', 'confirmed', 'waiting_confirmation', 'failed', 'canceled', 'cancelled', 'expired']);
 const registrationStatuses = new Set(['confirmed', 'cancelled', 'attended']);
@@ -250,6 +251,22 @@ function getJsonEligibleStudents(store) {
     parentStatus: row.parentStatus || row.parent_status || '',
     grade: row.grade || ''
   }));
+}
+
+function normalizeJsonEligibleStudents(store) {
+  return getJsonEligibleStudents(store).map(row => ({
+    id: row.id,
+    studentName: row.studentName,
+    parentStatus: row.parentStatus,
+    grade: row.grade
+  }));
+}
+
+function createJsonEligibleStudentId(rows) {
+  const numericIds = rows
+    .map(row => Number(row.id))
+    .filter(Number.isFinite);
+  return numericIds.length ? Math.max(...numericIds) + 1 : 1;
 }
 
 function sendJson(response, statusCode, payload) {
@@ -799,6 +816,48 @@ function toCamelRow(row) {
   };
 }
 
+function toCamelEligibleStudent(row) {
+  return {
+    id: String(row.id),
+    studentName: row.student_name,
+    parentStatus: row.parent_status,
+    grade: row.grade || '',
+    createdAt: row.created_at
+  };
+}
+
+function validateEligibleStudentPayload(payload, partial = false) {
+  const studentName = normalizeText(payload.studentName || payload.student_name);
+  const parentStatus = normalizeText(payload.parentStatus || payload.parent_status);
+  const grade = normalizeText(payload.grade);
+  const hasStudentName = Object.prototype.hasOwnProperty.call(payload, 'studentName')
+    || Object.prototype.hasOwnProperty.call(payload, 'student_name');
+  const hasParentStatus = Object.prototype.hasOwnProperty.call(payload, 'parentStatus')
+    || Object.prototype.hasOwnProperty.call(payload, 'parent_status');
+
+  if ((!partial || hasStudentName) && !studentName) {
+    return 'Student name is required.';
+  }
+
+  if ((!partial || hasParentStatus) && !parentStatus) {
+    return 'Parent status is required.';
+  }
+
+  if (studentName && studentName.length > 255) {
+    return 'Student name is too long.';
+  }
+
+  if (parentStatus && !eligibleParentStatuses.has(parentStatus)) {
+    return 'Parent status is not valid.';
+  }
+
+  if (grade.length > 100) {
+    return 'Grade is too long.';
+  }
+
+  return '';
+}
+
 async function createJsonRepository() {
   return {
     async health() {
@@ -829,6 +888,93 @@ async function createJsonRepository() {
       const store = await readStore();
       return filterRegistrations(store.registrations, searchParams)
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    },
+
+    async listEligibleStudents(searchParams) {
+      const store = await readStore();
+      const search = normalizeText(searchParams.get('search')).toLowerCase();
+      const parentStatus = normalizeText(searchParams.get('parentStatus'));
+
+      return getJsonEligibleStudents(store)
+        .filter(row => {
+          const searchable = [row.studentName, row.grade].join(' ').toLowerCase();
+          return (!search || searchable.includes(search))
+            && (!parentStatus || row.parentStatus === parentStatus);
+        })
+        .sort((a, b) => a.studentName.localeCompare(b.studentName));
+    },
+
+    async createEligibleStudent(payload) {
+      const validationError = validateEligibleStudentPayload(payload);
+      if (validationError) {
+        const error = new Error(validationError);
+        error.statusCode = 400;
+        throw error;
+      }
+
+      const store = await readStore();
+      const rows = normalizeJsonEligibleStudents(store);
+      const student = {
+        id: createJsonEligibleStudentId(rows),
+        studentName: normalizeText(payload.studentName || payload.student_name),
+        parentStatus: normalizeText(payload.parentStatus || payload.parent_status),
+        grade: normalizeText(payload.grade),
+        createdAt: new Date().toISOString()
+      };
+
+      store.eligibleStudents = [...rows, student];
+      await writeStore(store);
+      return student;
+    },
+
+    async updateEligibleStudent(id, payload) {
+      const validationError = validateEligibleStudentPayload(payload, true);
+      if (validationError) {
+        const error = new Error(validationError);
+        error.statusCode = 400;
+        throw error;
+      }
+
+      const store = await readStore();
+      const rows = normalizeJsonEligibleStudents(store);
+      const index = rows.findIndex(row => String(row.id) === String(id));
+
+      if (index === -1) {
+        return null;
+      }
+
+      const current = rows[index];
+      const next = {
+        ...current,
+        studentName: Object.prototype.hasOwnProperty.call(payload, 'studentName') || Object.prototype.hasOwnProperty.call(payload, 'student_name')
+          ? normalizeText(payload.studentName || payload.student_name)
+          : current.studentName,
+        parentStatus: Object.prototype.hasOwnProperty.call(payload, 'parentStatus') || Object.prototype.hasOwnProperty.call(payload, 'parent_status')
+          ? normalizeText(payload.parentStatus || payload.parent_status)
+          : current.parentStatus,
+        grade: Object.prototype.hasOwnProperty.call(payload, 'grade')
+          ? normalizeText(payload.grade)
+          : current.grade
+      };
+
+      rows[index] = next;
+      store.eligibleStudents = rows;
+      await writeStore(store);
+      return next;
+    },
+
+    async deleteEligibleStudent(id) {
+      const store = await readStore();
+      const rows = normalizeJsonEligibleStudents(store);
+      const nextRows = rows.filter(row => String(row.id) !== String(id));
+
+      if (nextRows.length === rows.length) {
+        return false;
+      }
+
+      store.eligibleStudents = nextRows;
+      await writeStore(store);
+      return true;
     },
 
     async create(payload) {
@@ -1313,6 +1459,120 @@ async function createPostgresRepository() {
       return result.rows.map(toCamelRow);
     },
 
+    async listEligibleStudents(searchParams) {
+      await ensureVerificationSchema(pool);
+      const params = [];
+      const where = [];
+      const search = normalizeText(searchParams.get('search'));
+      const parentStatus = normalizeText(searchParams.get('parentStatus'));
+
+      if (search) {
+        params.push(`%${search}%`);
+        where.push(`(student_name ILIKE $${params.length} OR grade ILIKE $${params.length})`);
+      }
+
+      if (parentStatus) {
+        params.push(parentStatus);
+        where.push(`parent_status = $${params.length}`);
+      }
+
+      const result = await pool.query(
+        `SELECT id, student_name, parent_status, grade, created_at
+         FROM eligible_students
+         ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+         ORDER BY student_name ASC`,
+        params
+      );
+
+      return result.rows.map(toCamelEligibleStudent);
+    },
+
+    async createEligibleStudent(payload) {
+      const validationError = validateEligibleStudentPayload(payload);
+      if (validationError) {
+        const error = new Error(validationError);
+        error.statusCode = 400;
+        throw error;
+      }
+
+      await ensureVerificationSchema(pool);
+      const result = await pool.query(
+        `INSERT INTO eligible_students (student_name, parent_status, grade)
+         VALUES ($1, $2, NULLIF($3, ''))
+         RETURNING id, student_name, parent_status, grade, created_at`,
+        [
+          normalizeText(payload.studentName || payload.student_name),
+          normalizeText(payload.parentStatus || payload.parent_status),
+          normalizeText(payload.grade)
+        ]
+      );
+
+      return toCamelEligibleStudent(result.rows[0]);
+    },
+
+    async updateEligibleStudent(id, payload) {
+      const validationError = validateEligibleStudentPayload(payload, true);
+      if (validationError) {
+        const error = new Error(validationError);
+        error.statusCode = 400;
+        throw error;
+      }
+
+      const assignments = [];
+      const values = [];
+      const fields = {
+        studentName: 'student_name',
+        student_name: 'student_name',
+        parentStatus: 'parent_status',
+        parent_status: 'parent_status',
+        grade: 'grade'
+      };
+      const assignedColumns = new Set();
+
+      Object.entries(fields).forEach(([key, column]) => {
+        if (!Object.prototype.hasOwnProperty.call(payload, key) || assignedColumns.has(column)) {
+          return;
+        }
+
+        assignedColumns.add(column);
+        values.push(normalizeText(payload[key]));
+        assignments.push(`${column} = ${column === 'grade' ? `NULLIF($${values.length}, '')` : `$${values.length}`}`);
+      });
+
+      await ensureVerificationSchema(pool);
+
+      if (!assignments.length) {
+        const result = await pool.query(
+          `SELECT id, student_name, parent_status, grade, created_at
+           FROM eligible_students
+           WHERE id::text = $1
+           LIMIT 1`,
+          [id]
+        );
+        return result.rows[0] ? toCamelEligibleStudent(result.rows[0]) : null;
+      }
+
+      values.push(id);
+      const result = await pool.query(
+        `UPDATE eligible_students
+         SET ${assignments.join(', ')}
+         WHERE id::text = $${values.length}
+         RETURNING id, student_name, parent_status, grade, created_at`,
+        values
+      );
+
+      return result.rows[0] ? toCamelEligibleStudent(result.rows[0]) : null;
+    },
+
+    async deleteEligibleStudent(id) {
+      await ensureVerificationSchema(pool);
+      const result = await pool.query(
+        `DELETE FROM eligible_students WHERE id::text = $1`,
+        [id]
+      );
+      return result.rowCount > 0;
+    },
+
     async create(payload) {
       const category = normalizeText(payload.category || payload.parentCategory);
       const parentStatus = getParentStatus(category);
@@ -1686,6 +1946,48 @@ async function handleApi(request, response, url) {
   if (route === '/api/registrations' && request.method === 'GET') {
     sendJson(response, 200, { registrations: await repository.list(url.searchParams) });
     return;
+  }
+
+  if (route === '/api/eligible-students' && request.method === 'GET') {
+    sendJson(response, 200, { students: await repository.listEligibleStudents(url.searchParams) });
+    return;
+  }
+
+  if (route === '/api/eligible-students' && request.method === 'POST') {
+    const payload = await readJsonBody(request);
+    const student = await repository.createEligibleStudent(payload);
+    sendJson(response, 201, { student });
+    return;
+  }
+
+  const eligibleDetailMatch = route.match(/^\/api\/eligible-students\/([^/]+)$/);
+  if (eligibleDetailMatch) {
+    const id = decodeURIComponent(eligibleDetailMatch[1]);
+
+    if (request.method === 'PATCH') {
+      const payload = await readJsonBody(request);
+      const student = await repository.updateEligibleStudent(id, payload);
+
+      if (!student) {
+        sendJson(response, 404, { error: 'Student data not found.' });
+        return;
+      }
+
+      sendJson(response, 200, { student });
+      return;
+    }
+
+    if (request.method === 'DELETE') {
+      const deleted = await repository.deleteEligibleStudent(id);
+
+      if (!deleted) {
+        sendJson(response, 404, { error: 'Student data not found.' });
+        return;
+      }
+
+      sendNoContent(response);
+      return;
+    }
   }
 
   if (route === '/api/registrations' && request.method === 'POST') {
