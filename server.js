@@ -999,18 +999,6 @@ async function createJsonRepository() {
       let duplicateReferenceId = null;
       let verificationNotes = verification.notes;
 
-      if (verificationStatus === 'not_verified') {
-        return {
-          success: true,
-          status: verificationStatus,
-          registration_id: null,
-          registrationId: '',
-          message: getVerificationMessage(verificationStatus),
-          next_step: getVerificationNextStep(verificationStatus),
-          registration: null
-        };
-      }
-
       if (verification.status === 'verified') {
         const duplicateCheck = checkJsonExistingRegistration(store, {
           matchedStudentId: verification.matchedStudentId,
@@ -1598,18 +1586,6 @@ async function createPostgresRepository() {
       let verificationStatus = verification.status;
       let duplicateReferenceId = null;
       let verificationNotes = verification.notes;
-
-      if (verificationStatus === 'not_verified') {
-        return {
-          success: true,
-          status: verificationStatus,
-          registration_id: null,
-          registrationId: '',
-          message: getVerificationMessage(verificationStatus),
-          next_step: getVerificationNextStep(verificationStatus),
-          registration: null
-        };
-      }
 
       if (verification.status === 'verified') {
         const duplicateCheck = await checkExistingRegistration({

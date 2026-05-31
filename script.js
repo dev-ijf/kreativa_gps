@@ -588,7 +588,18 @@ function isPaymentLinkContinuable(registration) {
     && !(paymentStatus === 'pending' && hasPaymentProof);
 }
 
-function fillRegistrationForm(form, registration) {
+function isPaymentLinkRecheckable(registration) {
+  const paymentStatus = String(registration?.paymentStatus || '').trim();
+  const hasPaymentProof = Boolean(registration?.paymentProofFilename);
+  const recheckableStatuses = new Set(['need_review', 'not_verified', 'already_registered']);
+
+  return recheckableStatuses.has(registration?.verificationStatus)
+    && !hasPaymentProof
+    && (!paymentStatus || paymentStatus === 'pending');
+}
+
+function fillRegistrationForm(form, registration, options = {}) {
+  const markVerified = options.markVerified !== false;
   const values = {
     waitingListStatus: registration.waitingListStatus || 'paid_commitment_fee',
     studentLevel: registration.studentLevel,
@@ -608,7 +619,11 @@ function fillRegistrationForm(form, registration) {
   });
 
   form.dataset.registrationId = registration.id || registration.registrationId || '';
-  form.dataset.verificationStatus = 'verified';
+  if (markVerified) {
+    form.dataset.verificationStatus = 'verified';
+  } else {
+    delete form.dataset.verificationStatus;
+  }
   clearPaymentProofSelection(form);
   updatePriceSummary(form);
 }
@@ -630,24 +645,6 @@ async function loadPaymentContinuationLink() {
     }
 
     const registration = result.registration;
-
-    if (!isPaymentLinkContinuable(registration)) {
-      if (registration.verificationStatus === 'need_review') {
-        showReviewSection(registration.id);
-        return;
-      }
-
-      if (registration.verificationStatus === 'already_registered'
-        || registration.paymentProofFilename
-        || ['verified', 'paid', 'confirmed', 'waiting_confirmation'].includes(String(registration.paymentStatus || '').trim())) {
-        showAlreadyRegisteredSection(registration.id);
-        return;
-      }
-
-      showInterestSection(registration.id);
-      return;
-    }
-
     const parentType = document.getElementById('parent-type');
     parentType.value = registration.parentCategory;
     parentType.dispatchEvent(new Event('change', { bubbles: true }));
@@ -660,8 +657,48 @@ async function loadPaymentContinuationLink() {
       throw new Error('Form pembayaran tidak ditemukan.');
     }
 
-    fillRegistrationForm(form, registration);
-    showPaymentSection(form, registration);
+    fillRegistrationForm(form, registration, { markVerified: false });
+
+    if (isPaymentLinkContinuable(registration)) {
+      showPaymentSection(form, registration);
+      return;
+    }
+
+    if (isPaymentLinkRecheckable(registration)) {
+      const recheckResult = await verifyRegistration(form);
+
+      if (recheckResult.status === 'verified') {
+        showPaymentSection(form, recheckResult.registration);
+        return;
+      }
+
+      if (recheckResult.status === 'need_review') {
+        showReviewSection(recheckResult.registration_id);
+        return;
+      }
+
+      if (recheckResult.status === 'already_registered') {
+        showAlreadyRegisteredSection(recheckResult.registration_id);
+        return;
+      }
+
+      showInterestSection(recheckResult.registration_id);
+      return;
+    }
+
+    if (registration.verificationStatus === 'need_review') {
+      showReviewSection(registration.id);
+      return;
+    }
+
+    if (registration.verificationStatus === 'already_registered'
+      || registration.paymentProofFilename
+      || ['verified', 'paid', 'confirmed', 'waiting_confirmation'].includes(String(registration.paymentStatus || '').trim())) {
+      showAlreadyRegisteredSection(registration.id);
+      return;
+    }
+
+    showInterestSection(registration.id);
   } catch (error) {
     alert(getFriendlyErrorMessage(error));
   }
