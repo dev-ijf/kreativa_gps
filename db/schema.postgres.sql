@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS registrations (
   phone VARCHAR(30) NOT NULL,
   email VARCHAR(150) NOT NULL,
   attendee_count INTEGER NOT NULL DEFAULT 1 CHECK (
-    attendee_count BETWEEN 1 AND 2
+    attendee_count BETWEEN 1 AND 3
   ),
   lunch_box_count INTEGER NOT NULL DEFAULT 0 CHECK (
     lunch_box_count BETWEEN 0 AND 10

@@ -8,7 +8,7 @@ CREATE TABLE registrations (
   parent_name TEXT NOT NULL,
   phone TEXT NOT NULL,
   email TEXT NOT NULL,
-  attendee_count INTEGER NOT NULL DEFAULT 1 CHECK (attendee_count BETWEEN 1 AND 2),
+  attendee_count INTEGER NOT NULL DEFAULT 1 CHECK (attendee_count BETWEEN 1 AND 3),
   lunch_box_count INTEGER NOT NULL DEFAULT 0 CHECK (lunch_box_count BETWEEN 0 AND 10),
   ticket_price INTEGER NOT NULL DEFAULT 0 CHECK (ticket_price >= 0),
   total_amount INTEGER NOT NULL DEFAULT 0 CHECK (total_amount >= 0),
