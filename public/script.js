@@ -936,6 +936,67 @@ function drawTicketCanvas(ctx, ticket) {
   ctx.fillText('* Mohon simpan e-ticket ini untuk ditunjukkan saat registrasi ulang.', 84, 718);
 }
 
+function isLimitedDownloadBrowser() {
+  const userAgent = navigator.userAgent || '';
+  const isIos = /iPad|iPhone|iPod/.test(userAgent)
+    || (userAgent.includes('Macintosh') && navigator.maxTouchPoints > 1);
+  const isInAppBrowser = /WhatsApp|Line|FBAN|FBAV|Instagram/i.test(userAgent);
+
+  return isIos || isInAppBrowser || !('download' in HTMLAnchorElement.prototype);
+}
+
+function openTicketImageForSaving(canvas, filename) {
+  const imageUrl = canvas.toDataURL('image/png');
+  const ticketWindow = window.open('', '_blank');
+
+  if (!ticketWindow) {
+    alert('Browser memblokir unduhan. Izinkan pop-up atau tekan lama gambar tiket untuk menyimpan.');
+    return;
+  }
+
+  ticketWindow.document.write(`
+    <!doctype html>
+    <html>
+      <head>
+        <title>${filename}</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+      </head>
+      <body style="margin:0;min-height:100vh;background:#f8fafc;font-family:Arial,sans-serif;display:grid;place-items:center;padding:18px;">
+        <main style="max-width:640px;width:100%;text-align:center;">
+          <p style="color:#1a2744;font-weight:700;margin:0 0 12px;">Simpan e-ticket ini. Jika tombol unduh tidak bekerja, tekan lama gambar lalu pilih simpan.</p>
+          <a href="${imageUrl}" download="${filename}" style="display:inline-block;margin-bottom:14px;padding:12px 20px;border-radius:999px;background:#ED3A5F;color:#fff;text-decoration:none;font-weight:700;">Unduh Tiket</a>
+          <img src="${imageUrl}" alt="E-ticket" style="display:block;width:100%;height:auto;border-radius:18px;box-shadow:0 18px 45px rgba(26,39,68,.18);">
+        </main>
+      </body>
+    </html>
+  `);
+  ticketWindow.document.close();
+}
+
+function downloadCanvas(canvas, filename) {
+  if (isLimitedDownloadBrowser() || !canvas.toBlob) {
+    openTicketImageForSaving(canvas, filename);
+    return;
+  }
+
+  canvas.toBlob(blob => {
+    if (!blob) {
+      openTicketImageForSaving(canvas, filename);
+      return;
+    }
+
+    const link = document.createElement('a');
+    const objectUrl = URL.createObjectURL(blob);
+    link.href = objectUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+  }, 'image/png');
+}
+
 function finishRegistration() {
   document.querySelectorAll('form').forEach(form => {
     form.reset();
@@ -1034,6 +1095,11 @@ async function showConfirmation(event) {
 }
 
 function downloadTicket() {
+  if (!currentRegistration) {
+    alert('Data tiket belum tersedia.');
+    return;
+  }
+
   const canvas = document.createElement('canvas');
   canvas.width = 600;
   canvas.height = 800;
@@ -1047,10 +1113,7 @@ function downloadTicket() {
     attendeeCount: currentRegistration?.attendeeCount
   });
 
-  const link = document.createElement('a');
-  link.href = canvas.toDataURL('image/png');
-  link.download = document.getElementById('reg-id').textContent + '_tiket.png';
-  link.click();
+  downloadCanvas(canvas, `${document.getElementById('reg-id').textContent}_tiket.png`);
 }
 
 function setupUploadZones() {
