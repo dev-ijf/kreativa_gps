@@ -489,6 +489,10 @@ function validateRegistration(payload) {
     return 'Number of attendees must be 1, 2, or 3.';
   }
 
+  if (attendeeCount === 3 && !['Grade 7', 'Grade 10'].includes(studentLevel)) {
+    return 'Three attendees are only available for Grade 7 and Grade 10.';
+  }
+
   if (lunchBoxCount !== attendeeCount) {
     return 'Lunch box reservation must match number of attendees.';
   }

@@ -227,16 +227,56 @@ function updateAllPriceSummaries() {
   document.querySelectorAll('form').forEach(updatePriceSummary);
 }
 
+function canUseThreeAttendees(form) {
+  const studentLevel = form.querySelector('[name="studentLevel"]')?.value || '';
+  return ['Grade 7', 'Grade 10'].includes(studentLevel);
+}
+
+function updateAttendanceAvailability(form) {
+  const allowThree = canUseThreeAttendees(form);
+
+  ['attendeeCount', 'lunchBoxCount'].forEach(name => {
+    const select = form.querySelector(`[name="${name}"]`);
+
+    if (!select) {
+      return;
+    }
+
+    const threeOption = Array.from(select.options).find(option => option.value === '3' || option.textContent.trim() === '3');
+    if (threeOption) {
+      threeOption.disabled = !allowThree;
+      threeOption.hidden = !allowThree;
+    }
+
+    if (!allowThree && select.value === '3') {
+      select.value = '2';
+    }
+  });
+
+  const attendeeSelect = form.querySelector('[name="attendeeCount"]');
+  const lunchSelect = form.querySelector('[name="lunchBoxCount"]');
+  if (attendeeSelect && lunchSelect && lunchSelect.value !== attendeeSelect.value) {
+    lunchSelect.value = attendeeSelect.value;
+  }
+
+  updatePriceSummary(form);
+}
+
 function setupAttendanceLunchSync() {
   document.querySelectorAll('form').forEach(form => {
     const attendeeSelect = form.querySelector('[name="attendeeCount"]');
     const lunchSelect = form.querySelector('[name="lunchBoxCount"]');
+    const studentLevelSelect = form.querySelector('[name="studentLevel"]');
 
     if (!attendeeSelect || !lunchSelect) {
       return;
     }
 
     attendeeSelect.addEventListener('change', () => {
+      if (attendeeSelect.value === '3' && !canUseThreeAttendees(form)) {
+        alert('Jumlah kehadiran 3 hanya tersedia untuk Grade 7 dan Grade 10.');
+        attendeeSelect.value = '2';
+      }
       lunchSelect.value = attendeeSelect.value;
       updatePriceSummary(form);
     });
@@ -253,6 +293,8 @@ function setupAttendanceLunchSync() {
       updatePriceSummary(form);
     });
 
+    studentLevelSelect?.addEventListener('change', () => updateAttendanceAvailability(form));
+    updateAttendanceAvailability(form);
     updatePriceSummary(form);
   });
 }
@@ -461,6 +503,7 @@ function getFriendlyErrorMessage(error) {
     'Phone number must contain numbers only.': 'Nomor telepon hanya boleh berisi angka.',
     'Email address is not valid.': 'Alamat email tidak valid.',
     'Number of attendees must be 1, 2, or 3.': 'Jumlah kehadiran harus 1, 2, atau 3.',
+    'Three attendees are only available for Grade 7 and Grade 10.': 'Jumlah kehadiran 3 hanya tersedia untuk Grade 7 dan Grade 10.',
     'Lunch box reservation must match number of attendees.': 'Paket Snack & Makan Siang harus sama dengan jumlah kehadiran.',
     'Payment proof is required.': 'Bukti pembayaran wajib diunggah.',
     'Payment proof upload is only available for verified registrations.': 'Unggah bukti pembayaran hanya tersedia untuk pendaftaran yang sudah terverifikasi.',
@@ -625,7 +668,7 @@ function fillRegistrationForm(form, registration, options = {}) {
     delete form.dataset.verificationStatus;
   }
   clearPaymentProofSelection(form);
-  updatePriceSummary(form);
+  updateAttendanceAvailability(form);
 }
 
 async function loadPaymentContinuationLink() {
@@ -928,6 +971,11 @@ async function showConfirmation(event) {
 
   if (attendeeCount !== lunchBoxCount) {
     alert('Paket Snack & Makan Siang harus sama dengan jumlah kehadiran.');
+    return;
+  }
+
+  if (attendeeCount === '3' && !canUseThreeAttendees(form)) {
+    alert('Jumlah kehadiran 3 hanya tersedia untuk Grade 7 dan Grade 10.');
     return;
   }
 
