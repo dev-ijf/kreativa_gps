@@ -485,8 +485,8 @@ function validateRegistration(payload) {
     return 'Email address is not valid.';
   }
 
-  if (attendeeCount < 1 || attendeeCount > 2) {
-    return 'Number of attendees must be 1 or 2.';
+  if (attendeeCount < 1 || attendeeCount > 3) {
+    return 'Number of attendees must be 1, 2, or 3.';
   }
 
   if (lunchBoxCount !== attendeeCount) {

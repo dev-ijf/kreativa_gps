@@ -460,7 +460,7 @@ function getFriendlyErrorMessage(error) {
     'Student level, student name, parent name, phone, and email are required.': 'Jenjang siswa, nama siswa, nama orang tua, nomor telepon, dan email wajib diisi.',
     'Phone number must contain numbers only.': 'Nomor telepon hanya boleh berisi angka.',
     'Email address is not valid.': 'Alamat email tidak valid.',
-    'Number of attendees must be 1 or 2.': 'Jumlah kehadiran harus 1 atau 2.',
+    'Number of attendees must be 1, 2, or 3.': 'Jumlah kehadiran harus 1, 2, atau 3.',
     'Lunch box reservation must match number of attendees.': 'Paket Snack & Makan Siang harus sama dengan jumlah kehadiran.',
     'Payment proof is required.': 'Bukti pembayaran wajib diunggah.',
     'Payment proof upload is only available for verified registrations.': 'Unggah bukti pembayaran hanya tersedia untuk pendaftaran yang sudah terverifikasi.',
