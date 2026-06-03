@@ -2,9 +2,12 @@ const tableBody = document.getElementById('registrations-body');
 const emptyState = document.getElementById('empty-state');
 const searchInput = document.getElementById('search-input');
 const categoryFilter = document.getElementById('category-filter');
+const gradeFilter = document.getElementById('grade-filter');
 const paymentFilter = document.getElementById('payment-filter');
 const statusFilter = document.getElementById('status-filter');
 const refreshButton = document.getElementById('refresh-btn');
+const exportExcelButton = document.getElementById('export-excel-btn');
+const registrationCountSummary = document.getElementById('registration-count-summary');
 const quotaTotal = document.getElementById('admin-quota-total');
 const quotaUsed = document.getElementById('admin-quota-used');
 const quotaRemaining = document.getElementById('admin-quota-remaining');
@@ -77,6 +80,330 @@ function formatCurrency(value) {
     currency: 'IDR',
     maximumFractionDigits: 0
   }).format(Number(value || 0));
+}
+
+function getSelectedOptionLabel(select) {
+  return select?.selectedOptions?.[0]?.textContent?.trim() || '';
+}
+
+function renderCountCard(label, value, tone = 'slate') {
+  const tones = {
+    slate: 'bg-slate-50 border-slate-200 text-slate-700',
+    blue: 'bg-blue-50 border-blue-100 text-[#1f3f8f]',
+    green: 'bg-emerald-50 border-emerald-100 text-emerald-700',
+    red: 'bg-red-50 border-red-100 text-red-700'
+  };
+
+  return `
+    <div class="rounded-lg border ${tones[tone] || tones.slate} px-4 py-3">
+      <div class="text-xs uppercase tracking-wide opacity-70">${escapeHtml(label)}</div>
+      <div class="text-2xl font-bold mt-1">${escapeHtml(value)}</div>
+    </div>
+  `;
+}
+
+function updateRegistrationCountSummary(rows) {
+  if (!registrationCountSummary) {
+    return;
+  }
+
+  const counts = rows.reduce((summary, row) => {
+    const paymentStatus = row.paymentStatus || 'unknown';
+    summary[paymentStatus] = (summary[paymentStatus] || 0) + 1;
+    return summary;
+  }, {});
+  const activeFilters = [
+    searchInput.value.trim() ? `Search: ${searchInput.value.trim()}` : '',
+    categoryFilter.value ? `Category: ${getSelectedOptionLabel(categoryFilter)}` : '',
+    gradeFilter.value ? `Grade: ${gradeFilter.value}` : '',
+    paymentFilter.value ? `Payment: ${getSelectedOptionLabel(paymentFilter)}` : '',
+    statusFilter.value ? `Status: ${getSelectedOptionLabel(statusFilter)}` : ''
+  ].filter(Boolean);
+
+  registrationCountSummary.innerHTML = `
+    ${renderCountCard('Total data tampil', rows.length, 'blue')}
+    ${renderCountCard('Pending', counts.pending || 0, 'slate')}
+    ${renderCountCard('Verified', counts.verified || 0, 'green')}
+    ${renderCountCard('Rejected', counts.rejected || 0, 'red')}
+    <div class="sm:col-span-2 lg:col-span-4 text-slate-500">
+      ${activeFilters.length ? `Filter aktif: ${escapeHtml(activeFilters.join(' | '))}` : 'Filter aktif: Semua data registration'}
+    </div>
+  `;
+}
+
+function escapeXml(value) {
+  return String(value ?? '')
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&apos;');
+}
+
+function columnName(index) {
+  let name = '';
+  let number = index + 1;
+
+  while (number > 0) {
+    const remainder = (number - 1) % 26;
+    name = String.fromCharCode(65 + remainder) + name;
+    number = Math.floor((number - 1) / 26);
+  }
+
+  return name;
+}
+
+let crcTable = null;
+
+function getCrcTable() {
+  if (crcTable) {
+    return crcTable;
+  }
+
+  crcTable = new Uint32Array(256);
+  for (let n = 0; n < 256; n += 1) {
+    let c = n;
+    for (let k = 0; k < 8; k += 1) {
+      c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    }
+    crcTable[n] = c >>> 0;
+  }
+
+  return crcTable;
+}
+
+function crc32(bytes) {
+  const table = getCrcTable();
+  let crc = 0xffffffff;
+
+  bytes.forEach(byte => {
+    crc = table[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+  });
+
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function writeUint16(bytes, value) {
+  bytes.push(value & 0xff, (value >>> 8) & 0xff);
+}
+
+function writeUint32(bytes, value) {
+  bytes.push(value & 0xff, (value >>> 8) & 0xff, (value >>> 16) & 0xff, (value >>> 24) & 0xff);
+}
+
+function getDosDateTime(date = new Date()) {
+  const time = (date.getHours() << 11) | (date.getMinutes() << 5) | Math.floor(date.getSeconds() / 2);
+  const dosDate = ((date.getFullYear() - 1980) << 9) | ((date.getMonth() + 1) << 5) | date.getDate();
+  return { time, date: dosDate };
+}
+
+function stringBytes(value) {
+  return new TextEncoder().encode(value);
+}
+
+function createZip(files) {
+  const chunks = [];
+  const centralDirectory = [];
+  let offset = 0;
+  const { time, date } = getDosDateTime();
+
+  files.forEach(file => {
+    const nameBytes = stringBytes(file.name);
+    const dataBytes = stringBytes(file.content);
+    const checksum = crc32(dataBytes);
+    const localHeader = [];
+
+    writeUint32(localHeader, 0x04034b50);
+    writeUint16(localHeader, 20);
+    writeUint16(localHeader, 0);
+    writeUint16(localHeader, 0);
+    writeUint16(localHeader, time);
+    writeUint16(localHeader, date);
+    writeUint32(localHeader, checksum);
+    writeUint32(localHeader, dataBytes.length);
+    writeUint32(localHeader, dataBytes.length);
+    writeUint16(localHeader, nameBytes.length);
+    writeUint16(localHeader, 0);
+
+    chunks.push(Uint8Array.from(localHeader), nameBytes, dataBytes);
+
+    const centralHeader = [];
+    writeUint32(centralHeader, 0x02014b50);
+    writeUint16(centralHeader, 20);
+    writeUint16(centralHeader, 20);
+    writeUint16(centralHeader, 0);
+    writeUint16(centralHeader, 0);
+    writeUint16(centralHeader, time);
+    writeUint16(centralHeader, date);
+    writeUint32(centralHeader, checksum);
+    writeUint32(centralHeader, dataBytes.length);
+    writeUint32(centralHeader, dataBytes.length);
+    writeUint16(centralHeader, nameBytes.length);
+    writeUint16(centralHeader, 0);
+    writeUint16(centralHeader, 0);
+    writeUint16(centralHeader, 0);
+    writeUint16(centralHeader, 0);
+    writeUint32(centralHeader, 0);
+    writeUint32(centralHeader, offset);
+    centralDirectory.push(Uint8Array.from(centralHeader), nameBytes);
+
+    offset += localHeader.length + nameBytes.length + dataBytes.length;
+  });
+
+  const centralSize = centralDirectory.reduce((sum, chunk) => sum + chunk.length, 0);
+  const endRecord = [];
+  writeUint32(endRecord, 0x06054b50);
+  writeUint16(endRecord, 0);
+  writeUint16(endRecord, 0);
+  writeUint16(endRecord, files.length);
+  writeUint16(endRecord, files.length);
+  writeUint32(endRecord, centralSize);
+  writeUint32(endRecord, offset);
+  writeUint16(endRecord, 0);
+
+  return new Blob([...chunks, ...centralDirectory, Uint8Array.from(endRecord)], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  });
+}
+
+function createWorksheetXml(headers, rows) {
+  const allRows = [headers, ...rows];
+  const rowXml = allRows.map((row, rowIndex) => {
+    const rowNumber = rowIndex + 1;
+    const cells = row.map((value, columnIndex) => {
+      const ref = `${columnName(columnIndex)}${rowNumber}`;
+      const style = rowIndex === 0 ? ' s="1"' : '';
+      return `<c r="${ref}" t="inlineStr"${style}><is><t>${escapeXml(value)}</t></is></c>`;
+    }).join('');
+    return `<row r="${rowNumber}">${cells}</row>`;
+  }).join('');
+  const lastColumn = columnName(headers.length - 1);
+  const lastRow = Math.max(allRows.length, 1);
+
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>
+  <sheetData>${rowXml}</sheetData>
+  <autoFilter ref="A1:${lastColumn}${lastRow}"/>
+</worksheet>`;
+}
+
+function createXlsxBlob(headers, rows) {
+  const worksheetXml = createWorksheetXml(headers, rows);
+  const files = [
+    {
+      name: '[Content_Types].xml',
+      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+</Types>`
+    },
+    {
+      name: '_rels/.rels',
+      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`
+    },
+    {
+      name: 'xl/workbook.xml',
+      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets><sheet name="Registrations" sheetId="1" r:id="rId1"/></sheets>
+</workbook>`
+    },
+    {
+      name: 'xl/_rels/workbook.xml.rels',
+      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`
+    },
+    {
+      name: 'xl/styles.xml',
+      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>
+  <fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>
+  <borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
+  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+  <cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs>
+</styleSheet>`
+    },
+    {
+      name: 'xl/worksheets/sheet1.xml',
+      content: worksheetXml
+    }
+  ];
+
+  return createZip(files);
+}
+
+function exportRegistrationsToExcel() {
+  if (!currentRows.length) {
+    alert('Tidak ada data registration untuk diexport.');
+    return;
+  }
+
+  const headers = [
+    'Registration ID',
+    'Created At',
+    'Student Name',
+    'Student Grade',
+    'Parent Name',
+    'Phone',
+    'Email',
+    'Category',
+    'Waiting List Status',
+    'Attendance',
+    'Paket Snack & Makan Siang',
+    'Seat Number',
+    'Ticket Price',
+    'Total Amount',
+    'Payment Status',
+    'Registration Status',
+    'Payment Proof',
+    'Notes'
+  ];
+
+  const rows = currentRows.map(row => [
+    row.registrationId,
+    formatDate(row.createdAt),
+    row.studentName,
+    row.studentLevel,
+    row.parentName,
+    row.phone,
+    row.email,
+    formatCategory(row.parentCategory),
+    row.waitingListStatus,
+    row.attendeeCount,
+    row.lunchBoxCount,
+    row.seatNumber,
+    row.ticketPrice,
+    row.totalAmount,
+    row.paymentStatus,
+    row.status,
+    row.paymentProofFilename,
+    row.notes
+  ]);
+
+  const blob = createXlsxBlob(headers, rows);
+  const link = document.createElement('a');
+  const objectUrl = URL.createObjectURL(blob);
+  const date = new Date().toISOString().slice(0, 10);
+
+  link.href = objectUrl;
+  link.download = `registrations-gps-2026-${date}.xlsx`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
 }
 
 function fitCanvasText(ctx, text, maxWidth) {
@@ -276,6 +603,10 @@ function buildQuery() {
     params.set('category', categoryFilter.value);
   }
 
+  if (gradeFilter.value) {
+    params.set('studentLevel', gradeFilter.value);
+  }
+
   if (paymentFilter.value) {
     params.set('paymentStatus', paymentFilter.value);
   }
@@ -320,6 +651,7 @@ async function loadRegistrations() {
 
 function renderRows(rows) {
   currentRows = rows;
+  updateRegistrationCountSummary(rows);
   emptyState.classList.toggle('hidden', rows.length > 0);
 
   if (!rows.length) {
@@ -684,7 +1016,7 @@ tableBody.addEventListener('click', async event => {
   }
 });
 
-[categoryFilter, paymentFilter, statusFilter].forEach(filter => {
+[categoryFilter, gradeFilter, paymentFilter, statusFilter].forEach(filter => {
   filter.addEventListener('change', loadRegistrations);
 });
 
@@ -696,6 +1028,7 @@ tabButtons.forEach(button => {
 
 searchInput.addEventListener('input', debounce(loadRegistrations));
 refreshButton.addEventListener('click', loadRegistrations);
+exportExcelButton.addEventListener('click', exportRegistrationsToExcel);
 
 studentSearchInput.addEventListener('input', debounce(loadEligibleStudents));
 studentStatusFilter.addEventListener('change', loadEligibleStudents);

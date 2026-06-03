@@ -776,6 +776,7 @@ function checkJsonExistingRegistration(store, { matchedStudentId, studentName, p
 function filterRegistrations(rows, searchParams) {
   const search = normalizeText(searchParams.get('search')).toLowerCase();
   const category = normalizeText(searchParams.get('category'));
+  const studentLevel = normalizeText(searchParams.get('studentLevel'));
   const status = normalizeText(searchParams.get('status'));
   const paymentStatus = normalizeText(searchParams.get('paymentStatus'));
 
@@ -791,6 +792,7 @@ function filterRegistrations(rows, searchParams) {
 
     return (!search || searchable.includes(search))
       && (!category || row.parentCategory === category)
+      && (!studentLevel || row.studentLevel === studentLevel)
       && (!status || row.status === status)
       && (!paymentStatus || row.paymentStatus === paymentStatus);
   });
@@ -1418,6 +1420,7 @@ async function createPostgresRepository() {
       const where = [];
       const search = normalizeText(searchParams.get('search'));
       const category = normalizeText(searchParams.get('category'));
+      const studentLevel = normalizeText(searchParams.get('studentLevel'));
       const status = normalizeText(searchParams.get('status'));
       const paymentStatus = normalizeText(searchParams.get('paymentStatus'));
 
@@ -1436,6 +1439,11 @@ async function createPostgresRepository() {
       if (category) {
         params.push(category);
         where.push(`parent_category = $${params.length}`);
+      }
+
+      if (studentLevel) {
+        params.push(studentLevel);
+        where.push(`student_level = $${params.length}`);
       }
 
       if (status) {

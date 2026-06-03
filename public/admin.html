@@ -74,12 +74,22 @@
 
    <div id="registrations-panel" data-admin-panel="registrations">
    <section class="bg-white border border-slate-200 rounded-xl p-4 md:p-5 mb-5">
-    <div class="grid md:grid-cols-[1fr_180px_180px_180px_auto] gap-3">
+    <div class="grid md:grid-cols-[1fr_180px_180px_180px_180px_auto_auto] gap-3">
      <input id="search-input" type="search" placeholder="Search name, email, phone, ID, seat" class="w-full p-3 rounded-lg border border-slate-200">
      <select id="category-filter" class="w-full p-3 rounded-lg border border-slate-200">
       <option value="">All Categories</option>
       <option value="existing">Existing Parent</option>
       <option value="waitlist">Waiting List</option>
+     </select>
+     <select id="grade-filter" class="w-full p-3 rounded-lg border border-slate-200">
+      <option value="">All Grades</option>
+      <option>Kindergarten 1</option>
+      <option>Kindergarten 2</option>
+      <option>Grade 1</option>
+      <option>Grade 2</option>
+      <option>Grade 3</option>
+      <option>Grade 7</option>
+      <option>Grade 10</option>
      </select>
      <select id="payment-filter" class="w-full p-3 rounded-lg border border-slate-200">
       <option value="">All Payments</option>
@@ -97,7 +107,12 @@
       <i data-lucide="refresh-cw" class="w-5 h-5"></i>
       Refresh
      </button>
+     <button id="export-excel-btn" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-[#ED3A5F] text-white font-medium">
+      <i data-lucide="file-spreadsheet" class="w-5 h-5"></i>
+      Export Excel
+     </button>
     </div>
+    <div id="registration-count-summary" class="mt-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm"></div>
    </section>
 
    <section class="bg-white border border-slate-200 rounded-xl overflow-hidden">
