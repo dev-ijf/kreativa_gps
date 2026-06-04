@@ -58,7 +58,7 @@ const allowedUpdates = new Set([
   'attendeeCount',
   'lunchBoxCount'
 ]);
-const eligibleParentStatuses = new Set(['existing_parent', 'waiting_list_parent']);
+const eligibleParentStatuses = new Set(['existing_parent', 'waiting_list_parent', 'has_not_registered']);
 
 const paymentStatuses = new Set(['pending', 'verified', 'rejected', 'paid', 'confirmed', 'waiting_confirmation', 'failed', 'canceled', 'cancelled', 'expired']);
 const registrationStatuses = new Set(['confirmed', 'cancelled', 'attended']);
@@ -131,11 +131,18 @@ async function ensureVerificationSchema(pool) {
       id SERIAL PRIMARY KEY,
       student_name VARCHAR(255) NOT NULL,
       parent_status VARCHAR(100) NOT NULL CHECK (
-        parent_status IN ('existing_parent', 'waiting_list_parent')
+        parent_status IN ('existing_parent', 'waiting_list_parent', 'has_not_registered')
       ),
       grade VARCHAR(100),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+
+    ALTER TABLE eligible_students
+    DROP CONSTRAINT IF EXISTS eligible_students_parent_status_check;
+
+    ALTER TABLE eligible_students
+    ADD CONSTRAINT eligible_students_parent_status_check
+    CHECK (parent_status IN ('existing_parent', 'waiting_list_parent', 'has_not_registered'));
 
     ALTER TABLE registrations
     ADD COLUMN IF NOT EXISTS parent_status VARCHAR(100);
@@ -775,6 +782,7 @@ function checkJsonExistingRegistration(store, { matchedStudentId, studentName, p
 
 function filterRegistrations(rows, searchParams) {
   const search = normalizeText(searchParams.get('search')).toLowerCase();
+  const searchDigits = search.replace(/\D/g, '');
   const category = normalizeText(searchParams.get('category'));
   const studentLevel = normalizeText(searchParams.get('studentLevel'));
   const status = normalizeText(searchParams.get('status'));
@@ -789,8 +797,9 @@ function filterRegistrations(rows, searchParams) {
       row.email,
       row.seatNumber
     ].join(' ').toLowerCase();
+    const phoneDigits = normalizeText(row.phone).replace(/\D/g, '');
 
-    return (!search || searchable.includes(search))
+    return (!search || searchable.includes(search) || (searchDigits && phoneDigits.includes(searchDigits)))
       && (!category || row.parentCategory === category)
       && (!studentLevel || row.studentLevel === studentLevel)
       && (!status || row.status === status)

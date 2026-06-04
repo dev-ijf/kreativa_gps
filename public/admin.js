@@ -58,9 +58,13 @@ function formatCategory(category) {
 }
 
 function formatStudentParentStatus(parentStatus) {
-  return parentStatus === 'existing_parent'
-    ? 'Siswa Aktif 2026/2027'
-    : 'Waiting List 2027/2028';
+  const labels = {
+    existing_parent: 'Siswa Aktif 2026/2027',
+    waiting_list_parent: 'Waiting List 2027/2028',
+    has_not_registered: 'Has Not Registered'
+  };
+
+  return labels[parentStatus] || '-';
 }
 
 function formatDate(value) {
@@ -770,6 +774,7 @@ function renderEligibleStudents(rows) {
         <select data-student-field="parentStatus" class="w-full p-2 rounded-lg border border-slate-200 text-sm">
           <option value="existing_parent" ${student.parentStatus === 'existing_parent' ? 'selected' : ''}>Siswa Aktif 2026/2027</option>
           <option value="waiting_list_parent" ${student.parentStatus === 'waiting_list_parent' ? 'selected' : ''}>Waiting List 2027/2028</option>
+          <option value="has_not_registered" ${student.parentStatus === 'has_not_registered' ? 'selected' : ''}>Has Not Registered</option>
         </select>
         ` : `<span class="inline-flex px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 leading-tight">${formatStudentParentStatus(student.parentStatus)}</span>`}
       </td>
