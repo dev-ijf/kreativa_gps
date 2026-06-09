@@ -474,6 +474,22 @@ function normalizeRegistrationCounts(payload) {
   };
 }
 
+function allowsThreeAttendeesForLevel(studentLevel) {
+  const normalizedLevel = normalizeText(studentLevel)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+
+  return [
+    'grade 7',
+    'grade 10',
+    'secondary 1',
+    'high school 1',
+    'highschool 1'
+  ].includes(normalizedLevel);
+}
+
 function validateRegistration(payload) {
   const category = normalizeText(payload.category || payload.parentCategory);
   const studentLevel = normalizeText(payload.studentLevel);
@@ -503,7 +519,7 @@ function validateRegistration(payload) {
     return 'Number of attendees must be 1, 2, or 3.';
   }
 
-  if (attendeeCount === 3 && !['Grade 7', 'Grade 10'].includes(studentLevel)) {
+  if (attendeeCount === 3 && !allowsThreeAttendeesForLevel(studentLevel)) {
     return 'Three attendees are only available for Grade 7 and Grade 10.';
   }
 
@@ -1466,7 +1482,33 @@ async function createPostgresRepository() {
       }
 
       const sql = `
-        SELECT *
+        SELECT
+          id,
+          registration_id,
+          parent_category,
+          waiting_list_status,
+          student_level,
+          student_name,
+          parent_name,
+          phone,
+          email,
+          attendee_count,
+          lunch_box_count,
+          seat_number,
+          ticket_price,
+          total_amount,
+          payment_status,
+          payment_proof_filename,
+          parent_status,
+          verification_status,
+          matched_student_id,
+          duplicate_reference_id,
+          verification_notes,
+          status,
+          notes,
+          checked_in_at,
+          created_at,
+          updated_at
         FROM registrations
         ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
         ORDER BY created_at DESC

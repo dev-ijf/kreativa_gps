@@ -229,7 +229,23 @@ function updateAllPriceSummaries() {
 
 function canUseThreeAttendees(form) {
   const studentLevel = form.querySelector('[name="studentLevel"]')?.value || '';
-  return ['Grade 7', 'Grade 10'].includes(studentLevel);
+  return allowsThreeAttendeesForLevel(studentLevel);
+}
+
+function allowsThreeAttendeesForLevel(studentLevel) {
+  const normalizedLevel = String(studentLevel || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+
+  return [
+    'grade 7',
+    'grade 10',
+    'secondary 1',
+    'high school 1',
+    'highschool 1'
+  ].includes(normalizedLevel);
 }
 
 function updateAttendanceAvailability(form) {
