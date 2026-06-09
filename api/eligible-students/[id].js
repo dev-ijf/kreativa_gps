@@ -6,8 +6,12 @@ import {
   sendNoContent,
   updateEligibleStudent
 } from '../../lib/repository.js';
+import { requireAuth } from '../../lib/auth.js';
 
 export default async function handler(request, response) {
+  const session = requireAuth(request, response);
+  if (!session) return;
+
   const id = request.query?.id;
 
   try {

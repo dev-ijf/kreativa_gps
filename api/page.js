@@ -4,6 +4,7 @@ import path from 'node:path';
 const FILES = {
   index: { path: 'index.html', type: 'text/html; charset=utf-8' },
   admin: { path: 'admin.html', type: 'text/html; charset=utf-8' },
+  'admin-login': { path: 'admin-login.html', type: 'text/html; charset=utf-8' },
   script: { path: 'script.js', type: 'application/javascript; charset=utf-8' },
   adminScript: { path: 'admin.js', type: 'application/javascript; charset=utf-8' },
   style: { path: 'style.css', type: 'text/css; charset=utf-8' },

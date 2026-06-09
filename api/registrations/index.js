@@ -6,10 +6,14 @@ import {
   sendJson,
   submitPaymentProof
 } from '../../lib/repository.js';
+import { requireAuth } from '../../lib/auth.js';
 
 export default async function handler(request, response) {
   try {
     if (request.method === 'GET') {
+      const session = requireAuth(request, response);
+      if (!session) return;
+
       const url = new URL(request.url, `https://${request.headers.host || 'localhost'}`);
       sendJson(response, 200, {
         registrations: await listRegistrations(url.searchParams)

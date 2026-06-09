@@ -11,16 +11,26 @@
  </head>
  <body class="min-h-screen bg-[#f8fafc]">
   <main class="max-w-7xl mx-auto px-5 py-8">
-   <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-8">
+   <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-5 mb-8">
     <div>
      <p class="uppercase tracking-[0.25em] text-xs text-[#ED3A5F] font-semibold">Admin Panel</p>
      <h1 class="text-3xl md:text-4xl font-bold text-[#1a2744] mt-2">Registration Management</h1>
      <p class="text-slate-500 mt-2">Kelola pendaftaran Global Parenting Summit 2026.</p>
     </div>
-    <a href="/" class="canva-button inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full font-medium">
-     <i data-lucide="arrow-left" class="w-5 h-5"></i>
-     Back to Form
-    </a>
+    <div class="flex items-center gap-3 shrink-0">
+     <div id="admin-user-info" class="text-right hidden">
+      <p id="admin-user-name" class="text-sm font-semibold text-[#1a2744]"></p>
+      <p id="admin-user-email" class="text-xs text-slate-500"></p>
+     </div>
+     <button id="logout-btn" class="hidden inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium transition-colors">
+      <i data-lucide="log-out" class="w-4 h-4"></i>
+      Logout
+     </button>
+     <a href="/" class="canva-button inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full font-medium">
+      <i data-lucide="arrow-left" class="w-5 h-5"></i>
+      Back to Form
+     </a>
+    </div>
    </div>
 
    <section class="grid md:grid-cols-3 gap-4 mb-5">
@@ -68,6 +78,10 @@
      <button id="students-tab" data-admin-tab="students" class="admin-tab inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-semibold text-sm">
       <i data-lucide="graduation-cap" class="w-5 h-5"></i>
       Data Siswa
+     </button>
+     <button id="admins-tab" data-admin-tab="admins" class="admin-tab inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-semibold text-sm">
+      <i data-lucide="shield-check" class="w-5 h-5"></i>
+      Kelola Admin
      </button>
     </div>
    </section>
@@ -119,17 +133,19 @@
     <div class="admin-table-wrap">
      <table class="admin-table w-full table-fixed text-sm">
       <colgroup>
-       <col class="w-[12%]">
-       <col class="w-[16%]">
-       <col class="w-[16%]">
+       <col class="w-[4%]">
        <col class="w-[11%]">
+       <col class="w-[15%]">
+       <col class="w-[14%]">
+       <col class="w-[10%]">
        <col class="w-[12%]">
-       <col class="w-[10%]">
+       <col class="w-[9%]">
        <col class="w-[13%]">
-       <col class="w-[10%]">
+       <col class="w-[9%]">
       </colgroup>
       <thead class="bg-slate-50 text-slate-500">
        <tr>
+        <th class="text-left font-semibold px-3 py-3 text-slate-400">#</th>
         <th class="text-left font-semibold px-3 py-3">Registration</th>
         <th class="text-left font-semibold px-3 py-3">Student</th>
         <th class="text-left font-semibold px-3 py-3">Parent</th>
@@ -144,6 +160,7 @@
      </table>
     </div>
    <div id="empty-state" class="hidden p-10 text-center text-slate-500">No registrations found.</div>
+   <div id="registrations-pagination"></div>
    </section>
    </div>
 
@@ -208,13 +225,15 @@
      <div class="admin-table-wrap">
       <table class="admin-table w-full table-fixed text-sm">
        <colgroup>
-        <col class="w-[42%]">
-        <col class="w-[28%]">
+        <col class="w-[4%]">
+        <col class="w-[38%]">
+        <col class="w-[26%]">
         <col class="w-[18%]">
         <col class="w-[12%]">
        </colgroup>
        <thead class="bg-slate-50 text-slate-500">
         <tr>
+         <th class="text-left font-semibold px-3 py-3 text-slate-400">#</th>
          <th class="text-left font-semibold px-3 py-3">Nama Siswa</th>
          <th class="text-left font-semibold px-3 py-3">Kategori</th>
          <th class="text-left font-semibold px-3 py-3">Grade</th>
@@ -225,8 +244,84 @@
       </table>
      </div>
      <div id="students-empty-state" class="hidden p-10 text-center text-slate-500">Data siswa belum ada.</div>
+     <div id="students-pagination"></div>
     </section>
    </div>
+   <div id="admins-panel" data-admin-panel="admins" class="hidden">
+    <section class="bg-white border border-slate-200 rounded-xl p-4 md:p-5 mb-5">
+     <div class="mb-4">
+      <h2 class="text-2xl font-bold text-[#1a2744]">Kelola Admin</h2>
+      <p class="text-slate-500 mt-1">Tambah, ubah, atau hapus akun admin panel.</p>
+     </div>
+     <div class="mb-4 rounded-lg bg-blue-50 border border-blue-100 px-4 py-3">
+      <h3 id="admin-form-title" class="font-semibold text-[#1a2744]">Tambah Admin Baru</h3>
+      <p class="text-sm text-slate-600 mt-1">Password minimal 8 karakter. Kosongkan password saat edit untuk tidak mengubah password.</p>
+     </div>
+     <form id="admin-form" class="grid md:grid-cols-[1.5fr_1fr_1.5fr_1fr_150px_auto] gap-3">
+      <input type="hidden" name="id">
+      <input name="name" type="text" placeholder="Nama lengkap" class="w-full p-3 rounded-lg border border-slate-200" required>
+      <input name="username" type="text" placeholder="Username" class="w-full p-3 rounded-lg border border-slate-200" required>
+      <input name="email" type="email" placeholder="Email" class="w-full p-3 rounded-lg border border-slate-200" required>
+      <input name="password" type="password" placeholder="Password" class="w-full p-3 rounded-lg border border-slate-200">
+      <select name="role" class="w-full p-3 rounded-lg border border-slate-200" required>
+       <option value="admin">Admin</option>
+       <option value="superadmin">Super Admin</option>
+      </select>
+      <div class="flex gap-2">
+       <button id="admin-submit-btn" type="submit" class="inline-flex flex-1 items-center justify-center gap-2 px-5 py-3 rounded-lg bg-[#1f3f8f] text-white font-medium">
+        <i data-lucide="save" class="w-5 h-5"></i>
+        Simpan
+       </button>
+       <button id="admin-cancel-btn" type="button" class="hidden inline-flex items-center justify-center px-4 py-3 rounded-lg bg-slate-100 text-slate-700 font-medium">Batal</button>
+      </div>
+     </form>
+    </section>
+
+    <section class="bg-white border border-slate-200 rounded-xl p-4 md:p-5 mb-5">
+     <div class="flex gap-3">
+      <input id="admin-search-input" type="search" placeholder="Cari nama, username, atau email" class="flex-1 p-3 rounded-lg border border-slate-200">
+      <select id="admin-role-filter" class="p-3 rounded-lg border border-slate-200">
+       <option value="">Semua Role</option>
+       <option value="superadmin">Super Admin</option>
+       <option value="admin">Admin</option>
+      </select>
+      <button id="admin-refresh-btn" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-[#1a2744] text-white font-medium">
+       <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+       Refresh
+      </button>
+     </div>
+    </section>
+
+    <section class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+     <div class="admin-table-wrap">
+      <table class="admin-table w-full table-fixed text-sm">
+       <colgroup>
+        <col class="w-[4%]">
+        <col class="w-[20%]">
+        <col class="w-[15%]">
+        <col class="w-[25%]">
+        <col class="w-[13%]">
+        <col class="w-[12%]">
+        <col class="w-[11%]">
+       </colgroup>
+       <thead class="bg-slate-50 text-slate-500">
+        <tr>
+         <th class="text-left font-semibold px-3 py-3 text-slate-400">#</th>
+         <th class="text-left font-semibold px-3 py-3">Nama</th>
+         <th class="text-left font-semibold px-3 py-3">Username</th>
+         <th class="text-left font-semibold px-3 py-3">Email</th>
+         <th class="text-left font-semibold px-3 py-3">Role</th>
+         <th class="text-left font-semibold px-3 py-3">Status</th>
+         <th class="text-right font-semibold px-3 py-3">Actions</th>
+        </tr>
+       </thead>
+       <tbody id="admins-body" class="divide-y divide-slate-100"></tbody>
+      </table>
+     </div>
+     <div id="admins-empty-state" class="hidden p-10 text-center text-slate-500">Belum ada admin.</div>
+    </section>
+   </div>
+
   </main>
   <script src="admin.js"></script>
  </body>

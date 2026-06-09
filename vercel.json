@@ -6,6 +6,12 @@
   "functions": {
     "api/page.js": {
       "includeFiles": "dist/**"
+    },
+    "api/auth/*.js": {
+      "includeFiles": "lib/**"
+    },
+    "api/admins/*.js": {
+      "includeFiles": "lib/**"
     }
   },
   "redirects": [
@@ -27,6 +33,10 @@
     {
       "source": "/admin.html",
       "destination": "/admin.html"
+    },
+    {
+      "source": "/admin/login",
+      "destination": "/admin-login.html"
     }
   ]
 }

@@ -5,8 +5,12 @@ import {
   readJsonBody,
   sendJson
 } from '../../lib/repository.js';
+import { requireAuth } from '../../lib/auth.js';
 
 export default async function handler(request, response) {
+  const session = requireAuth(request, response);
+  if (!session) return;
+
   try {
     if (request.method === 'GET') {
       const url = new URL(request.url, `https://${request.headers.host || 'localhost'}`);
