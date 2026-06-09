@@ -3,7 +3,7 @@ import { readFile, writeFile, mkdir, unlink } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, scryptSync, randomBytes, timingSafeEqual, createHmac } from 'node:crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,6 +24,8 @@ const usePostgres = Boolean(
     || process.env.PGHOST
     || process.env.PGDATABASE
 );
+
+const redisClient = createRedisClient();
 
 const defaultEligibleStudents = [
   { id: 1, studentName: 'Ahmad Zaki', parentStatus: 'existing_parent', grade: 'P1' },
@@ -1977,25 +1979,646 @@ const repository = usePostgres
   ? await createPostgresRepository()
   : await createJsonRepository();
 
+const adminRepository = usePostgres
+  ? await createPostgresAdminRepository()
+  : createJsonAdminRepository();
+
+// ─── Admin repositories ───────────────────────────────────────────────────────
+
+function toAdminRow(row) {
+  return {
+    id: String(row.id),
+    username: row.username,
+    email: row.email,
+    name: row.name,
+    role: row.role,
+    isActive: row.is_active,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+function validateAdminPayload(payload, partial = false) {
+  const username = normalizeText(payload.username);
+  const email = normalizeText(payload.email);
+  const name = normalizeText(payload.name);
+  const password = normalizeText(payload.password);
+  const role = normalizeText(payload.role);
+  const validRoles = new Set(['superadmin', 'admin']);
+
+  if (!partial) {
+    if (!username) return 'Username is required.';
+    if (!email) return 'Email is required.';
+    if (!name) return 'Name is required.';
+    if (!password) return 'Password is required.';
+  }
+
+  if (username && !/^[a-z0-9_]{3,80}$/.test(username)) {
+    return 'Username must be 3-80 lowercase alphanumeric characters or underscores.';
+  }
+
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return 'Email is not valid.';
+  }
+
+  if (name && name.length > 150) return 'Name is too long.';
+
+  if (password && password.length < 8) {
+    return 'Password must be at least 8 characters.';
+  }
+
+  if (role && !validRoles.has(role)) {
+    return 'Role must be "superadmin" or "admin".';
+  }
+
+  return '';
+}
+
+async function createPostgresAdminRepository() {
+  let Pool;
+  try {
+    ({ Pool } = await import('pg'));
+  } catch {
+    throw new Error('Package "pg" is not installed.');
+  }
+
+  const pool = new Pool(createPoolConfig());
+
+  return {
+    async list(searchParams) {
+      const search = normalizeText(searchParams.get('search'));
+      const role = normalizeText(searchParams.get('role'));
+      const params = [];
+      const where = [];
+
+      if (search) {
+        params.push(`%${search}%`);
+        where.push(`(username ILIKE $${params.length} OR email ILIKE $${params.length} OR name ILIKE $${params.length})`);
+      }
+
+      if (role) {
+        params.push(role);
+        where.push(`role = $${params.length}`);
+      }
+
+      const result = await pool.query(
+        `SELECT id, username, email, name, role, is_active, created_at, updated_at
+         FROM admins
+         ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+         ORDER BY created_at DESC`,
+        params
+      );
+
+      return result.rows.map(toAdminRow);
+    },
+
+    async get(id) {
+      const result = await pool.query(
+        `SELECT id, username, email, name, role, is_active, created_at, updated_at
+         FROM admins WHERE id::text = $1::text LIMIT 1`,
+        [id]
+      );
+      return result.rows[0] ? toAdminRow(result.rows[0]) : null;
+    },
+
+    async create(payload) {
+      const error = validateAdminPayload(payload);
+      if (error) { const e = new Error(error); e.statusCode = 400; throw e; }
+
+      const result = await pool.query(
+        `INSERT INTO admins (username, email, password_hash, name, role)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, username, email, name, role, is_active, created_at, updated_at`,
+        [
+          normalizeText(payload.username),
+          normalizeText(payload.email),
+          hashPassword(normalizeText(payload.password)),
+          normalizeText(payload.name),
+          normalizeText(payload.role) || 'admin'
+        ]
+      );
+      return toAdminRow(result.rows[0]);
+    },
+
+    async update(id, payload) {
+      const error = validateAdminPayload(payload, true);
+      if (error) { const e = new Error(error); e.statusCode = 400; throw e; }
+
+      const sets = [];
+      const values = [];
+
+      if (payload.username !== undefined) {
+        values.push(normalizeText(payload.username));
+        sets.push(`username = $${values.length}`);
+      }
+      if (payload.email !== undefined) {
+        values.push(normalizeText(payload.email));
+        sets.push(`email = $${values.length}`);
+      }
+      if (payload.name !== undefined) {
+        values.push(normalizeText(payload.name));
+        sets.push(`name = $${values.length}`);
+      }
+      if (payload.password !== undefined) {
+        values.push(hashPassword(normalizeText(payload.password)));
+        sets.push(`password_hash = $${values.length}`);
+      }
+      if (payload.role !== undefined) {
+        values.push(normalizeText(payload.role));
+        sets.push(`role = $${values.length}`);
+      }
+      if (payload.isActive !== undefined) {
+        values.push(Boolean(payload.isActive));
+        sets.push(`is_active = $${values.length}`);
+      }
+
+      if (!sets.length) return this.get(id);
+
+      values.push(id);
+      const result = await pool.query(
+        `UPDATE admins SET ${sets.join(', ')}
+         WHERE id::text = $${values.length}::text
+         RETURNING id, username, email, name, role, is_active, created_at, updated_at`,
+        values
+      );
+      return result.rows[0] ? toAdminRow(result.rows[0]) : null;
+    },
+
+    async delete(id) {
+      const result = await pool.query(
+        `DELETE FROM admins WHERE id::text = $1::text`,
+        [id]
+      );
+      return result.rowCount > 0;
+    },
+
+    verifyPassword
+  };
+}
+
+function createJsonAdminRepository() {
+  const adminsFile = path.join(__dirname, 'data', 'admins.json');
+
+  async function readAdmins() {
+    try {
+      const raw = await readFile(adminsFile, 'utf8');
+      return JSON.parse(raw || '[]');
+    } catch {
+      return [];
+    }
+  }
+
+  async function writeAdmins(rows) {
+    await mkdir(path.join(__dirname, 'data'), { recursive: true });
+    await writeFile(adminsFile, JSON.stringify(rows, null, 2));
+  }
+
+  return {
+    async list(searchParams) {
+      const rows = await readAdmins();
+      const search = normalizeText(searchParams.get('search')).toLowerCase();
+      const role = normalizeText(searchParams.get('role'));
+      return rows.filter(row =>
+        (!search || [row.username, row.email, row.name].join(' ').toLowerCase().includes(search))
+        && (!role || row.role === role)
+      ).map(row => ({ ...row, password_hash: undefined }));
+    },
+
+    async get(id) {
+      const rows = await readAdmins();
+      const row = rows.find(r => String(r.id) === String(id));
+      if (!row) return null;
+      const { password_hash: _, ...rest } = row;
+      return rest;
+    },
+
+    async create(payload) {
+      const error = validateAdminPayload(payload);
+      if (error) { const e = new Error(error); e.statusCode = 400; throw e; }
+      const rows = await readAdmins();
+      const now = new Date().toISOString();
+      const newAdmin = {
+        id: rows.length ? Math.max(...rows.map(r => Number(r.id))) + 1 : 1,
+        username: normalizeText(payload.username),
+        email: normalizeText(payload.email),
+        password_hash: hashPassword(normalizeText(payload.password)),
+        name: normalizeText(payload.name),
+        role: normalizeText(payload.role) || 'admin',
+        isActive: true,
+        createdAt: now,
+        updatedAt: now
+      };
+      rows.push(newAdmin);
+      await writeAdmins(rows);
+      const { password_hash: _, ...rest } = newAdmin;
+      return rest;
+    },
+
+    async update(id, payload) {
+      const error = validateAdminPayload(payload, true);
+      if (error) { const e = new Error(error); e.statusCode = 400; throw e; }
+      const rows = await readAdmins();
+      const index = rows.findIndex(r => String(r.id) === String(id));
+      if (index === -1) return null;
+      const current = rows[index];
+      const next = { ...current, updatedAt: new Date().toISOString() };
+      if (payload.username !== undefined) next.username = normalizeText(payload.username);
+      if (payload.email !== undefined) next.email = normalizeText(payload.email);
+      if (payload.name !== undefined) next.name = normalizeText(payload.name);
+      if (payload.password !== undefined) next.password_hash = hashPassword(normalizeText(payload.password));
+      if (payload.role !== undefined) next.role = normalizeText(payload.role);
+      if (payload.isActive !== undefined) next.isActive = Boolean(payload.isActive);
+      rows[index] = next;
+      await writeAdmins(rows);
+      const { password_hash: _, ...rest } = next;
+      return rest;
+    },
+
+    async delete(id) {
+      const rows = await readAdmins();
+      const nextRows = rows.filter(r => String(r.id) !== String(id));
+      if (nextRows.length === rows.length) return false;
+      await writeAdmins(nextRows);
+      return true;
+    },
+
+    verifyPassword
+  };
+}
+
+// ─── Password helpers ─────────────────────────────────────────────────────────
+
+function hashPassword(password) {
+  const salt = randomBytes(16).toString('hex');
+  const hash = scryptSync(password, salt, 64).toString('hex');
+  return `${salt}:${hash}`;
+}
+
+function verifyPassword(password, stored) {
+  try {
+    const [salt, hash] = stored.split(':');
+    const inputHash = scryptSync(password, salt, 64);
+    return timingSafeEqual(Buffer.from(hash, 'hex'), inputHash);
+  } catch {
+    return false;
+  }
+}
+
+// ─── Session / JWT helpers ────────────────────────────────────────────────────
+
+const SESSION_SECRET = process.env.ADMIN_SESSION_SECRET || 'change-me';
+const SESSION_MAX_AGE = 8 * 60 * 60;
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
+
+function base64UrlEncode(input) {
+  const str = typeof input === 'string' ? input : JSON.stringify(input);
+  return Buffer.from(str).toString('base64url');
+}
+
+function base64UrlDecode(str) {
+  return Buffer.from(str, 'base64url').toString('utf8');
+}
+
+function signAdminJwt(payload) {
+  const now = Math.floor(Date.now() / 1000);
+  const claims = { ...payload, iat: now, exp: now + SESSION_MAX_AGE };
+  const header = base64UrlEncode({ alg: 'HS256', typ: 'JWT' });
+  const body = base64UrlEncode(claims);
+  const sig = createHmac('sha256', SESSION_SECRET).update(`${header}.${body}`).digest('base64url');
+  return `${header}.${body}.${sig}`;
+}
+
+function verifyAdminJwt(token) {
+  if (!token) return null;
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  const [header, body, sig] = parts;
+  const expected = createHmac('sha256', SESSION_SECRET).update(`${header}.${body}`).digest('base64url');
+  if (sig.length !== expected.length || !timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
+  try {
+    const claims = JSON.parse(base64UrlDecode(body));
+    if (claims.exp && claims.exp < Math.floor(Date.now() / 1000)) return null;
+    return claims;
+  } catch {
+    return null;
+  }
+}
+
+function parseCookies(header) {
+  const cookies = {};
+  if (!header) return cookies;
+  header.split(';').forEach(part => {
+    const [k, ...v] = part.split('=');
+    if (k) cookies[k.trim()] = v.join('=').trim();
+  });
+  return cookies;
+}
+
+function getSessionFromRequest(request) {
+  const cookies = parseCookies(request.headers.cookie);
+  return verifyAdminJwt(cookies.admin_session);
+}
+
+function setSessionCookie(response, token) {
+  response.setHeader('Set-Cookie',
+    `admin_session=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${SESSION_MAX_AGE}`);
+}
+
+function clearSessionCookie(response) {
+  response.setHeader('Set-Cookie',
+    'admin_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0');
+}
+
+// ─── Redis cache layer ────────────────────────────────────────────────────────
+
+function createRedisClient() {
+  const url = process.env.KV_REST_API_URL;
+  const token = process.env.KV_REST_API_TOKEN;
+  if (!url || !token) return null;
+
+  const base = url.replace(/\/$/, '');
+
+  async function pipeline(commands) {
+    try {
+      const res = await fetch(`${base}/pipeline`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(commands)
+      });
+      if (!res.ok) return commands.map(() => null);
+      const data = await res.json();
+      return data.map(d => d.result);
+    } catch {
+      return commands.map(() => null);
+    }
+  }
+
+  return {
+    async get(key) {
+      const [result] = await pipeline([['GET', key]]);
+      if (result === null || result === undefined) return null;
+      try { return JSON.parse(result); } catch { return result; }
+    },
+    async set(key, value) {
+      await pipeline([['SET', key, JSON.stringify(value)]]);
+    },
+    async del(keys) {
+      if (!keys.length) return;
+      await pipeline([['DEL', ...keys]]);
+    },
+    async deletePattern(pattern) {
+      let cursor = 0;
+      const toDelete = [];
+      do {
+        const [result] = await pipeline([['SCAN', String(cursor), 'MATCH', pattern, 'COUNT', '200']]);
+        if (!Array.isArray(result) || result.length < 2) break;
+        cursor = Number(result[0]);
+        const keys = result[1];
+        if (Array.isArray(keys) && keys.length) toDelete.push(...keys);
+      } while (cursor !== 0);
+      if (toDelete.length) await this.del(toDelete);
+    }
+  };
+}
+
+function makeCacheKey(prefix, searchParams) {
+  const entries = [...searchParams.entries()].sort(([a], [b]) => a.localeCompare(b));
+  const suffix = entries.map(([k, v]) => `${k}=${v}`).join('&');
+  return `cache:${prefix}${suffix ? ':' + suffix : ''}`;
+}
+
+async function cacheGet(key) {
+  if (!redisClient) return null;
+  try { return await redisClient.get(key); } catch { return null; }
+}
+
+function cacheSet(key, value) {
+  if (!redisClient) return;
+  redisClient.set(key, value).catch(() => {});
+}
+
+function cacheInvalidate(keys) {
+  if (!redisClient || !keys.length) return;
+  redisClient.del(keys).catch(() => {});
+}
+
+function cacheInvalidatePattern(pattern) {
+  if (!redisClient) return;
+  redisClient.deletePattern(pattern).catch(() => {});
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 async function handleApi(request, response, url) {
   const route = url.pathname;
 
+  const bypassCache = request.headers['x-bypass-cache'] === '1';
+
+  // ── Auth routes ────────────────────────────────────────────────────────────
+
+  if (route === '/api/auth/google' && request.method === 'GET') {
+    const protocol = (request.headers['x-forwarded-proto'] || 'http').split(',')[0].trim();
+    const host = request.headers['x-forwarded-host'] || request.headers.host;
+    const redirectUri = `${protocol}://${host}/api/auth/callback`;
+    const state = randomBytes(16).toString('hex');
+    const params = new URLSearchParams({
+      client_id: GOOGLE_CLIENT_ID,
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      scope: 'openid email profile',
+      access_type: 'offline',
+      prompt: 'select_account',
+      state
+    });
+    response.writeHead(302, { Location: `https://accounts.google.com/o/oauth2/v2/auth?${params}` });
+    response.end();
+    return;
+  }
+
+  if (route === '/api/auth/callback' && request.method === 'GET') {
+    const code = url.searchParams.get('code');
+    if (!code) {
+      response.writeHead(302, { Location: '/admin/login?error=oauth_failed' });
+      response.end();
+      return;
+    }
+
+    const protocol = (request.headers['x-forwarded-proto'] || 'http').split(',')[0].trim();
+    const host = request.headers['x-forwarded-host'] || request.headers.host;
+    const redirectUri = `${protocol}://${host}/api/auth/callback`;
+
+    try {
+      const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          code,
+          client_id: GOOGLE_CLIENT_ID,
+          client_secret: GOOGLE_CLIENT_SECRET,
+          redirect_uri: redirectUri,
+          grant_type: 'authorization_code'
+        })
+      });
+      const tokenData = await tokenRes.json();
+
+      if (!tokenData.access_token) {
+        response.writeHead(302, { Location: '/admin/login?error=oauth_failed' });
+        response.end();
+        return;
+      }
+
+      const userRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: { Authorization: `Bearer ${tokenData.access_token}` }
+      });
+      const googleUser = await userRes.json();
+      const email = (googleUser.email || '').toLowerCase().trim();
+
+      if (!email) {
+        response.writeHead(302, { Location: '/admin/login?error=oauth_failed' });
+        response.end();
+        return;
+      }
+
+      let admin = null;
+      if (usePostgres) {
+        const { Pool } = await import('pg');
+        const pool = new Pool(createPoolConfig());
+        try {
+          const result = await pool.query(
+            'SELECT id, username, email, name, role, is_active FROM admins WHERE LOWER(email) = $1 LIMIT 1',
+            [email]
+          );
+          admin = result.rows[0] || null;
+        } finally {
+          await pool.end();
+        }
+      }
+
+      if (!admin) {
+        response.writeHead(302, { Location: '/admin/login?error=not_registered' });
+        response.end();
+        return;
+      }
+
+      if (!admin.is_active) {
+        response.writeHead(302, { Location: '/admin/login?error=inactive' });
+        response.end();
+        return;
+      }
+
+      const token = signAdminJwt({
+        sub: String(admin.id),
+        email: admin.email,
+        name: admin.name,
+        role: admin.role
+      });
+      setSessionCookie(response, token);
+      response.writeHead(302, { Location: '/admin' });
+      response.end();
+    } catch {
+      response.writeHead(302, { Location: '/admin/login?error=oauth_failed' });
+      response.end();
+    }
+    return;
+  }
+
+  if (route === '/api/auth/logout' && request.method === 'POST') {
+    clearSessionCookie(response);
+    sendJson(response, 200, { ok: true });
+    return;
+  }
+
+  if (route === '/api/auth/me' && request.method === 'GET') {
+    const session = getSessionFromRequest(request);
+    if (!session) {
+      sendJson(response, 401, { error: 'Not authenticated.' });
+      return;
+    }
+    sendJson(response, 200, {
+      id: session.sub,
+      email: session.email,
+      name: session.name,
+      role: session.role
+    });
+    return;
+  }
+
+  // ── End auth routes ────────────────────────────────────────────────────────
+
+  // ── Protected route guard ──────────────────────────────────────────────────
+
+  const protectedApiRoutes = [
+    [/^GET$/,                     /^\/api\/registrations$/],
+    [/^GET$/,                     /^\/api\/eligible-students$/],
+    [/^(GET|POST|PATCH|DELETE)$/, /^\/api\/admins/],
+    [/^(PATCH|DELETE)$/,          /^\/api\/registrations\/.+$/],
+    [/^(POST|PATCH|DELETE)$/,     /^\/api\/eligible-students/],
+  ];
+
+  const isProtected = protectedApiRoutes.some(
+    ([methodRe, pathRe]) => methodRe.test(request.method) && pathRe.test(route)
+  );
+
+  if (isProtected) {
+    const session = getSessionFromRequest(request);
+    if (!session) {
+      sendJson(response, 401, { error: 'Authentication required.' });
+      return;
+    }
+  }
+
+  // ── End protected route guard ──────────────────────────────────────────────
+
   if (route === '/api/health' && request.method === 'GET') {
-    sendJson(response, 200, await repository.health());
+    if (!bypassCache) {
+      const cached = await cacheGet('cache:health');
+      if (cached) { sendJson(response, 200, cached); return; }
+    }
+    const healthData = await repository.health();
+    if (!bypassCache) cacheSet('cache:health', healthData);
+    sendJson(response, 200, healthData);
     return;
   }
 
   if (route === '/api/config' && request.method === 'GET') {
-    sendJson(response, 200, await repository.config());
+    if (!bypassCache) {
+      const cached = await cacheGet('cache:config');
+      if (cached) { sendJson(response, 200, cached); return; }
+    }
+    const configData = await repository.config();
+    if (!bypassCache) cacheSet('cache:config', configData);
+    sendJson(response, 200, configData);
     return;
   }
 
   if (route === '/api/registrations' && request.method === 'GET') {
+    if (!bypassCache) {
+      const cacheKey = makeCacheKey('registrations', url.searchParams);
+      const cached = await cacheGet(cacheKey);
+      if (cached) { sendJson(response, 200, cached); return; }
+      const listData = { registrations: await repository.list(url.searchParams) };
+      cacheSet(cacheKey, listData);
+      sendJson(response, 200, listData);
+      return;
+    }
     sendJson(response, 200, { registrations: await repository.list(url.searchParams) });
     return;
   }
 
   if (route === '/api/eligible-students' && request.method === 'GET') {
+    if (!bypassCache) {
+      const cacheKey = makeCacheKey('eligible_students', url.searchParams);
+      const cached = await cacheGet(cacheKey);
+      if (cached) { sendJson(response, 200, cached); return; }
+      const studentsData = { students: await repository.listEligibleStudents(url.searchParams) };
+      cacheSet(cacheKey, studentsData);
+      sendJson(response, 200, studentsData);
+      return;
+    }
     sendJson(response, 200, { students: await repository.listEligibleStudents(url.searchParams) });
     return;
   }
@@ -2003,6 +2626,7 @@ async function handleApi(request, response, url) {
   if (route === '/api/eligible-students' && request.method === 'POST') {
     const payload = await readJsonBody(request);
     const student = await repository.createEligibleStudent(payload);
+    cacheInvalidatePattern('cache:eligible_students*');
     sendJson(response, 201, { student });
     return;
   }
@@ -2020,6 +2644,7 @@ async function handleApi(request, response, url) {
         return;
       }
 
+      cacheInvalidatePattern('cache:eligible_students*');
       sendJson(response, 200, { student });
       return;
     }
@@ -2032,6 +2657,7 @@ async function handleApi(request, response, url) {
         return;
       }
 
+      cacheInvalidatePattern('cache:eligible_students*');
       sendNoContent(response);
       return;
     }
@@ -2050,6 +2676,8 @@ async function handleApi(request, response, url) {
       }
 
       const result = await repository.submitPaymentProof(payload);
+      cacheInvalidatePattern('cache:registrations*');
+      cacheInvalidate(['cache:health', 'cache:config']);
       sendJson(response, 200, result);
       return;
     }
@@ -2062,6 +2690,8 @@ async function handleApi(request, response, url) {
     }
 
     const result = await repository.create(payload);
+    cacheInvalidatePattern('cache:registrations*');
+    cacheInvalidate(['cache:health', 'cache:config']);
     sendJson(response, 201, result);
     return;
   }
@@ -2109,13 +2739,19 @@ async function handleApi(request, response, url) {
     const id = decodeURIComponent(detailMatch[1]);
 
     if (request.method === 'GET') {
-      const registration = await repository.get(id);
-
-      if (!registration) {
-        sendJson(response, 404, { error: 'Registration not found.' });
+      if (!bypassCache) {
+        const cacheKey = `cache:registration:${id}`;
+        const cached = await cacheGet(cacheKey);
+        if (cached) { sendJson(response, 200, cached); return; }
+        const registration = await repository.get(id);
+        if (!registration) { sendJson(response, 404, { error: 'Registration not found.' }); return; }
+        const regData = { registration };
+        cacheSet(cacheKey, regData);
+        sendJson(response, 200, regData);
         return;
       }
-
+      const registration = await repository.get(id);
+      if (!registration) { sendJson(response, 404, { error: 'Registration not found.' }); return; }
       sendJson(response, 200, { registration });
       return;
     }
@@ -2140,6 +2776,8 @@ async function handleApi(request, response, url) {
         return;
       }
 
+      cacheInvalidatePattern('cache:registrations*');
+      cacheInvalidate(['cache:health', 'cache:config', `cache:registration:${id}`]);
       sendJson(response, 200, { registration });
       return;
     }
@@ -2152,6 +2790,50 @@ async function handleApi(request, response, url) {
         return;
       }
 
+      cacheInvalidatePattern('cache:registrations*');
+      cacheInvalidate(['cache:health', 'cache:config', `cache:registration:${id}`]);
+      sendNoContent(response);
+      return;
+    }
+  }
+
+  // ── Admins CRUD ─────────────────────────────────────────────────────────────
+
+  if (route === '/api/admins' && request.method === 'GET') {
+    const result = await adminRepository.list(url.searchParams);
+    sendJson(response, 200, { admins: result });
+    return;
+  }
+
+  if (route === '/api/admins' && request.method === 'POST') {
+    const payload = await readJsonBody(request);
+    const admin = await adminRepository.create(payload);
+    sendJson(response, 201, { admin });
+    return;
+  }
+
+  const adminDetailMatch = route.match(/^\/api\/admins\/([^/]+)$/);
+  if (adminDetailMatch) {
+    const adminId = decodeURIComponent(adminDetailMatch[1]);
+
+    if (request.method === 'GET') {
+      const admin = await adminRepository.get(adminId);
+      if (!admin) { sendJson(response, 404, { error: 'Admin not found.' }); return; }
+      sendJson(response, 200, { admin });
+      return;
+    }
+
+    if (request.method === 'PATCH') {
+      const payload = await readJsonBody(request);
+      const admin = await adminRepository.update(adminId, payload);
+      if (!admin) { sendJson(response, 404, { error: 'Admin not found.' }); return; }
+      sendJson(response, 200, { admin });
+      return;
+    }
+
+    if (request.method === 'DELETE') {
+      const deleted = await adminRepository.delete(adminId);
+      if (!deleted) { sendJson(response, 404, { error: 'Admin not found.' }); return; }
       sendNoContent(response);
       return;
     }
@@ -2170,17 +2852,28 @@ async function serveStatic(request, response, url) {
     return;
   }
 
-  try {
-    const file = await readFile(absolutePath);
-    const extension = path.extname(absolutePath).toLowerCase();
-    response.writeHead(200, {
-      'Content-Type': contentTypes[extension] || 'application/octet-stream'
-    });
-    response.end(file);
-  } catch {
-    response.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
-    response.end('Not found');
+  // Candidates to try: exact path, then .html fallback for extensionless URLs
+  const candidates = [absolutePath];
+  if (!path.extname(absolutePath)) {
+    candidates.push(`${absolutePath}.html`);
   }
+
+  for (const candidate of candidates) {
+    try {
+      const file = await readFile(candidate);
+      const extension = path.extname(candidate).toLowerCase();
+      response.writeHead(200, {
+        'Content-Type': contentTypes[extension] || 'application/octet-stream'
+      });
+      response.end(file);
+      return;
+    } catch {
+      // try next candidate
+    }
+  }
+
+  response.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+  response.end('Not found');
 }
 
 const server = createServer(async (request, response) => {
@@ -2190,6 +2883,28 @@ const server = createServer(async (request, response) => {
     if (url.pathname.startsWith('/api/')) {
       await handleApi(request, response, url);
       return;
+    }
+
+    if (url.pathname === '/admin/login') {
+      const session = getSessionFromRequest(request);
+      if (session) {
+        response.writeHead(302, { Location: '/admin' });
+        response.end();
+        return;
+      }
+      const loginFile = await readFile(path.join(__dirname, 'admin-login.html'));
+      response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      response.end(loginFile);
+      return;
+    }
+
+    if (url.pathname === '/admin') {
+      const session = getSessionFromRequest(request);
+      if (!session) {
+        response.writeHead(302, { Location: '/admin/login' });
+        response.end();
+        return;
+      }
     }
 
     await serveStatic(request, response, url);
