@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS registrations (
   id BIGSERIAL PRIMARY KEY,
   registration_id VARCHAR(30) NOT NULL UNIQUE,
   parent_category VARCHAR(20) NOT NULL CHECK (
-    parent_category IN ('existing', 'waitlist')
+    parent_category IN ('existing', 'waitlist', 'general')
   ),
   waiting_list_status VARCHAR(30),
   student_level VARCHAR(100) NOT NULL,

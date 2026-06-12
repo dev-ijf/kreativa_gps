@@ -52,7 +52,7 @@
     <p data-template-id="reg-subtitle" class="canva-text text-center mt-3"></p>
     <p data-template-id="verification-note" class="canva-text text-center mt-3 text-sm text-slate-500"></p>
     <div class="mt-10">
-     <label data-template-id="reg-type-label" class="canva-text block mb-2 font-medium" for="parent-type"></label> <select id="parent-type" class="w-full p-4 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#ED3A5F]/30 text-base"> <option value="">- Pilih -</option> <option value="existing">Orang Tua Siswa Aktif 2026/2027</option> <option value="waitlist">Orang Tua Waiting List 2027/2028</option> <option value="new">Anak Saya Belum Terdaftar</option> </select>
+     <label data-template-id="reg-type-label" class="canva-text block mb-2 font-medium" for="parent-type"></label> <select id="parent-type" class="w-full p-4 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#ED3A5F]/30 text-base"> <option value="">- Pilih -</option> <option value="existing">Orang Tua Siswa Aktif 2026/2027</option> <option value="general">Umum</option> </select>
     </div><!-- Flow A -->
     <form id="flow-a" class="hidden mt-8 space-y-5" onsubmit="showConfirmation(event)">
     <select name="studentLevel" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Jenjang Siswa</option><option>Kindergarten 1</option><option>Kindergarten 2</option><option>Grade 1</option><option>Grade 2</option><option>Grade 3</option><option>Grade 7</option><option>Grade 10</option></select> <div><input name="studentName" type="text" placeholder="Nama Lengkap Siswa (sesuai data sekolah)" class="w-full p-4 rounded-xl border border-gray-200" required><p class="mt-2 text-xs text-slate-500">Mohon isi nama lengkap siswa sesuai dengan data sekolah.</p></div> <input name="parentName" type="text" placeholder="Nama Orang Tua" class="w-full p-4 rounded-xl border border-gray-200" required> <input name="phone" type="tel" placeholder="Nomor Telepon (WhatsApp)" class="w-full p-4 rounded-xl border border-gray-200" required> <input name="email" type="email" placeholder="Alamat Email" class="w-full p-4 rounded-xl border border-gray-200" required> <select name="attendeeCount" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Jumlah Kehadiran</option><option>1</option><option>2</option><option>3</option></select> <select name="lunchBoxCount" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Paket Snack &amp; Makan Siang</option><option>1</option><option>2</option><option>3</option></select>
@@ -72,7 +72,7 @@
       <div class="upload-zone rounded-xl mt-6 p-8 text-center cursor-pointer" onclick="this.querySelector('input').click()">
        <i data-lucide="upload-cloud" class="w-10 h-10 mx-auto text-[#ED3A5F] mb-2"></i>
        <p data-template-id="upload-label" class="canva-text"></p>
-       <p class="text-xs text-gray-400 mt-1">JPG, PNG atau PDF</p><input name="paymentProof" type="file" class="hidden" accept="image/*,.pdf" onchange="generateSeatNumber('flow-a')">
+       <p class="text-xs text-gray-400 mt-1">JPG, PNG atau PDF</p><input name="paymentProof" type="file" class="hidden" accept="image/*,.pdf" onchange="handlePaymentProofChange(this)">
       </div>
      </div><button data-template-id="submit-btn" type="submit" class="canva-button w-full py-4 rounded-full font-semibold text-lg transition-all hover:scale-[1.02]"></button>
     </form><!-- Flow B -->
@@ -96,7 +96,7 @@
       <div class="upload-zone rounded-xl mt-6 p-8 text-center cursor-pointer" onclick="this.querySelector('input').click()">
        <i data-lucide="upload-cloud" class="w-10 h-10 mx-auto text-[#ED3A5F] mb-2"></i>
        <p data-template-id="upload-label-b" class="canva-text"></p>
-       <p class="text-xs text-gray-400 mt-1">JPG, PNG atau PDF</p><input name="paymentProof" type="file" class="hidden" accept="image/*,.pdf" onchange="generateSeatNumber('flow-b')">
+       <p class="text-xs text-gray-400 mt-1">JPG, PNG atau PDF</p><input name="paymentProof" type="file" class="hidden" accept="image/*,.pdf" onchange="handlePaymentProofChange(this)">
       </div>
      </div><button data-template-id="submit-btn-b" type="submit" class="canva-button w-full py-4 rounded-full font-semibold text-lg transition-all hover:scale-[1.02]"></button>
      </div>
@@ -128,6 +128,34 @@
       </div>
      </div>
     </div>
+    <form id="flow-d" class="hidden mt-8 space-y-5" onsubmit="showConfirmation(event)">
+     <input name="studentLevel" type="hidden" value="Umum">
+     <input name="parentName" type="hidden" value="">
+     <input name="lunchBoxCount" type="hidden" value="1">
+     <input name="studentName" type="text" placeholder="Nama Lengkap" class="w-full p-4 rounded-xl border border-gray-200" required>
+     <input name="phone" type="tel" placeholder="Nomor HP" class="w-full p-4 rounded-xl border border-gray-200" required>
+     <input name="email" type="email" placeholder="Email" class="w-full p-4 rounded-xl border border-gray-200" required>
+     <select name="attendeeCount" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Tiket</option><option value="1">1 orang</option><option value="2">2 orang</option></select>
+     <div class="price-summary rounded-xl border border-[#ED3A5F]/40 bg-[#fefdf8] p-4">
+      <div class="flex justify-between gap-4 text-sm"><span class="text-slate-500">Paket Snack &amp; Makan Siang</span><span data-price-label class="font-semibold text-[#1a2744]">-</span></div>
+      <div class="flex justify-between gap-4 text-sm mt-2"><span class="text-slate-500">Jumlah</span><span data-quantity-label class="font-semibold text-[#1a2744]">-</span></div>
+      <div class="flex justify-between gap-4 border-t border-[#ED3A5F]/30 mt-3 pt-3"><span class="font-semibold text-[#1a2744]">Total Pembayaran</span><span data-total-label class="font-bold text-[#ED3A5F]">-</span></div>
+     </div>
+     <div id="payment-d" class="rounded-2xl border border-gray-100 p-6 card-shadow">
+      <h3 class="canva-text font-semibold mb-4">QRIS Payment</h3>
+      <div class="canva-card rounded-xl p-6 text-center">
+       <p class="canva-text text-sm mb-2">Scan QRIS untuk pembayaran</p>
+       <img src="assets/qris-payment.jpg" alt="QRIS pembayaran Kreativa Global School" class="qris-image mx-auto rounded-xl border border-gray-100 bg-white" loading="lazy">
+       <p class="canva-text mt-3 font-medium">Kreativa Global School</p>
+       <a href="assets/qris-payment.jpg" download="qris-kreativa-global-school.jpg" class="mt-4 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-[#1f3f8f] text-white text-sm font-semibold hover:scale-105 transition"><i data-lucide="download" class="w-4 h-4"></i>Unduh QRIS</a>
+      </div>
+      <div class="upload-zone rounded-xl mt-6 p-8 text-center cursor-pointer" onclick="this.querySelector('input').click()">
+       <i data-lucide="upload-cloud" class="w-10 h-10 mx-auto text-[#ED3A5F] mb-2"></i>
+       <p class="canva-text">Unggah bukti pembayaran (wajib)</p>
+       <p class="text-xs text-gray-400 mt-1">JPG, PNG atau PDF</p><input name="paymentProof" type="file" class="hidden" accept="image/*,.pdf" onchange="handlePaymentProofChange(this)" required>
+      </div>
+     </div><button type="submit" class="canva-button w-full py-4 rounded-full font-semibold text-lg transition-all hover:scale-[1.02]">Submit</button>
+    </form>
     <div id="review-section" class="hidden mt-8">
      <div class="canva-card card-shadow rounded-2xl p-10 text-center">
       <i data-lucide="clipboard-check" class="w-12 h-12 mx-auto text-[#ED3A5F] mb-4"></i>

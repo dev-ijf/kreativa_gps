@@ -73,7 +73,11 @@ function optionHtml(options, selected) {
 }
 
 function formatCategory(category) {
-  return category === 'existing' ? 'Existing Parent' : 'Waiting List';
+  return {
+    existing: 'Existing Parent',
+    waitlist: 'Waiting List',
+    general: 'Umum'
+  }[category] || category || '-';
 }
 
 function formatStudentParentStatus(parentStatus) {

@@ -41,6 +41,7 @@ let generatedSeatNumber = '';
 let currentRegistration = null;
 const appConfig = {
   ticketPrice: 0,
+  generalTicketPrice: 300000,
   ticketQuota: 800
 };
 const maxDirectUploadBytes = 2_000_000;
@@ -81,7 +82,7 @@ function fillTemplateContent() {
 }
 
 function resetFlows() {
-  ['flow-a', 'flow-b', 'flow-c'].forEach(id => {
+  ['flow-a', 'flow-b', 'flow-c', 'flow-d'].forEach(id => {
     document.getElementById(id).classList.add('hidden');
   });
   hideResultSections();
@@ -134,6 +135,15 @@ function showPaymentSection(form, registration) {
   paymentSection?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
+function showGeneralPaymentSection(form) {
+  form.querySelectorAll('.price-summary, #payment-d').forEach(section => {
+    section.classList.remove('hidden');
+  });
+  setPaymentFieldsEnabled(form, true);
+  setSubmitLabel(form, 'Submit');
+  updatePriceSummary(form);
+}
+
 function resetVerificationState() {
   document.querySelectorAll('form').forEach(form => {
     delete form.dataset.registrationId;
@@ -166,6 +176,10 @@ function resetFormVerificationState(form) {
   hideResultSections();
   hidePaymentSections(form);
   clearPaymentProofSelection(form);
+
+  if (form.id === 'flow-d') {
+    showGeneralPaymentSection(form);
+  }
 }
 
 function handleParentTypeChange(event) {
@@ -174,11 +188,17 @@ function handleParentTypeChange(event) {
   const selectedFlow = {
     existing: 'flow-a',
     waitlist: 'flow-b',
-    new: 'flow-c'
+    new: 'flow-c',
+    general: 'flow-d'
   }[event.target.value];
 
   if (selectedFlow) {
-    document.getElementById(selectedFlow).classList.remove('hidden');
+    const flow = document.getElementById(selectedFlow);
+    flow.classList.remove('hidden');
+
+    if (event.target.value === 'general') {
+      showGeneralPaymentSection(flow);
+    }
   }
 
   updateWaitingListStatusFlow();
@@ -201,6 +221,7 @@ async function loadConfig() {
 
     const config = await response.json();
     appConfig.ticketPrice = Number(config.ticketPrice || 0);
+    appConfig.generalTicketPrice = Number(config.generalTicketPrice || appConfig.generalTicketPrice);
     appConfig.ticketQuota = Number(config.ticketQuota || 800);
     updateAllPriceSummaries();
   } catch {
@@ -210,6 +231,7 @@ async function loadConfig() {
 
 function updatePriceSummary(form) {
   const attendeeCount = Number(form.querySelector('[name="attendeeCount"]')?.value || 0);
+  const unitPrice = getFormTicketPrice(form);
   const priceLabel = form.querySelector('[data-price-label]');
   const quantityLabel = form.querySelector('[data-quantity-label]');
   const totalLabel = form.querySelector('[data-total-label]');
@@ -218,9 +240,17 @@ function updatePriceSummary(form) {
     return;
   }
 
-  priceLabel.textContent = formatCurrency(appConfig.ticketPrice);
+  priceLabel.textContent = formatCurrency(unitPrice);
     quantityLabel.textContent = attendeeCount ? `${attendeeCount} tiket` : '-';
-  totalLabel.textContent = attendeeCount ? formatCurrency(attendeeCount * appConfig.ticketPrice) : '-';
+  totalLabel.textContent = attendeeCount ? formatCurrency(getFormTotalAmount(form, attendeeCount)) : '-';
+}
+
+function getFormTicketPrice(form) {
+  return form?.id === 'flow-d' ? appConfig.generalTicketPrice : appConfig.ticketPrice;
+}
+
+function getFormTotalAmount(form, attendeeCount) {
+  return Number(attendeeCount || 0) * getFormTicketPrice(form);
 }
 
 function updateAllPriceSummaries() {
@@ -366,6 +396,16 @@ function generateSeatNumber() {
   generatedSeatNumber = String(Math.floor(Math.random() * appConfig.ticketQuota) + 1);
 }
 
+function isImageProofFile(file) {
+  return Boolean(file?.type?.startsWith('image/'))
+    || /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(file?.name || '');
+}
+
+function handlePaymentProofChange(input) {
+  generateSeatNumber();
+  updatePaymentProofPreview(input);
+}
+
 function updatePaymentProofPreview(input) {
   const file = input.files && input.files[0];
   const zone = input.closest('.upload-zone');
@@ -389,7 +429,7 @@ function updatePaymentProofPreview(input) {
 
   const fileSize = `${Math.max(file.size / 1024 / 1024, 0.01).toFixed(2)} MB`;
 
-  if (file.type.startsWith('image/')) {
+  if (isImageProofFile(file)) {
     const imageUrl = URL.createObjectURL(file);
     preview.innerHTML = `
       <img src="${imageUrl}" alt="Bukti pembayaran yang dipilih" class="upload-preview-image">
@@ -541,10 +581,11 @@ function getFriendlyErrorMessage(error) {
 }
 
 function validatePaymentProofSelection(form) {
-  const input = form.querySelector('[name="paymentProof"]:not(:disabled)');
+  const input = form.querySelector('[name="paymentProof"]');
   const file = input?.files && input.files[0];
 
   if (file?.name) {
+    input.disabled = false;
     return true;
   }
 
@@ -583,8 +624,10 @@ function validateContactFields(form) {
 async function buildRegistrationPayload(form, options = {}) {
   const includePaymentProof = Boolean(options.includePaymentProof);
   const formData = new FormData(form);
-  const paymentProof = formData.get('paymentProof');
+  const paymentProof = form.querySelector('[name="paymentProof"]')?.files?.[0] || formData.get('paymentProof');
   const attendeeCount = String(formData.get('attendeeCount') || '1');
+  const category = getSelectedCategory();
+  const studentName = normalizeInputValue(formData.get('studentName'));
   const hasPaymentProof = includePaymentProof && paymentProof && paymentProof.name;
   const preparedPaymentProof = hasPaymentProof
     ? await preparePaymentProof(paymentProof)
@@ -593,11 +636,11 @@ async function buildRegistrationPayload(form, options = {}) {
   const payload = {
     action: includePaymentProof ? 'payment' : 'verify',
     registrationId: form.dataset.registrationId || form.dataset.draftRegistrationId || '',
-    category: getSelectedCategory(),
+    category,
     waitingListStatus: normalizeInputValue(formData.get('waitingListStatus')),
     studentLevel: normalizeInputValue(formData.get('studentLevel')),
-    studentName: normalizeInputValue(formData.get('studentName')),
-    parentName: normalizeInputValue(formData.get('parentName')),
+    studentName,
+    parentName: category === 'general' ? studentName : normalizeInputValue(formData.get('parentName')),
     phone: normalizeInputValue(formData.get('phone')),
     email: normalizeInputValue(formData.get('email')),
     attendeeCount,
@@ -710,7 +753,9 @@ async function loadPaymentContinuationLink() {
 
     const form = registration.parentCategory === 'waitlist'
       ? document.getElementById('flow-b')
-      : document.getElementById('flow-a');
+      : registration.parentCategory === 'general'
+        ? document.getElementById('flow-d')
+        : document.getElementById('flow-a');
 
     if (!form) {
       throw new Error('Form pembayaran tidak ditemukan.');
@@ -1045,6 +1090,7 @@ async function showConfirmation(event) {
   const attendeeCount = form.querySelector('[name="attendeeCount"]')?.value;
   const lunchBoxCount = form.querySelector('[name="lunchBoxCount"]')?.value;
   const isPaymentStep = form.dataset.verificationStatus === 'verified' && form.dataset.registrationId;
+  const isGeneralForm = getSelectedCategory() === 'general';
 
   if (attendeeCount !== lunchBoxCount) {
     alert('Paket Snack & Makan Siang harus sama dengan jumlah kehadiran.');
@@ -1060,12 +1106,12 @@ async function showConfirmation(event) {
     return;
   }
 
-  if (isPaymentStep && !validatePaymentProofSelection(form)) {
+  if ((isPaymentStep || isGeneralForm) && !validatePaymentProofSelection(form)) {
     return;
   }
 
   submitButton.disabled = true;
-  submitButton.textContent = isPaymentStep ? 'Menyimpan...' : 'Memeriksa...';
+  submitButton.textContent = isPaymentStep || isGeneralForm ? 'Menyimpan...' : 'Memeriksa...';
 
   try {
     if (isPaymentStep) {
@@ -1079,10 +1125,22 @@ async function showConfirmation(event) {
     }
 
     hideResultSections();
-    hidePaymentSections(form);
+    if (isGeneralForm) {
+      showGeneralPaymentSection(form);
+    } else {
+      hidePaymentSections(form);
+    }
     const result = await verifyRegistration(form);
 
     if (result.status === 'verified') {
+      if (isGeneralForm) {
+        form.dataset.registrationId = result.registration?.id || result.registration?.registrationId || result.registration_id || '';
+        form.dataset.verificationStatus = 'verified';
+        const paymentResult = await submitPaymentProof(form);
+        showTicketConfirmation(paymentResult.registration);
+        return;
+      }
+
       showPaymentSection(form, result.registration);
       return;
     }
@@ -1194,6 +1252,7 @@ function initPage() {
 }
 
 window.generateSeatNumber = generateSeatNumber;
+window.handlePaymentProofChange = handlePaymentProofChange;
 window.showConfirmation = showConfirmation;
 window.downloadTicket = downloadTicket;
 window.finishRegistration = finishRegistration;

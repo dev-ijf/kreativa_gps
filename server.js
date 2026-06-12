@@ -15,6 +15,7 @@ loadEnvFile();
 
 const port = Number(process.env.PORT || 3000);
 const ticketPrice = normalizeCurrency(process.env.TICKET_PRICE || 0);
+const generalTicketPrice = normalizeCurrency(process.env.GENERAL_TICKET_PRICE || 300000);
 const ticketQuota = normalizeQuota(process.env.TICKET_QUOTA || 800);
 const usePostgres = Boolean(
   process.env.DATABASE_URL
@@ -186,8 +187,15 @@ async function ensureVerificationSchema(pool) {
     DROP CONSTRAINT IF EXISTS registrations_attendee_count_check;
 
     ALTER TABLE registrations
+    DROP CONSTRAINT IF EXISTS registrations_parent_category_check;
+
+    ALTER TABLE registrations
     ADD CONSTRAINT registrations_attendee_count_check
     CHECK (attendee_count BETWEEN 1 AND 3);
+
+    ALTER TABLE registrations
+    ADD CONSTRAINT registrations_parent_category_check
+    CHECK (parent_category IN ('existing', 'waitlist', 'general'));
 
     ALTER TABLE registrations
     ADD CONSTRAINT registrations_verification_status_check
@@ -494,6 +502,7 @@ function allowsThreeAttendeesForLevel(studentLevel) {
 
 function validateRegistration(payload) {
   const category = normalizeText(payload.category || payload.parentCategory);
+  const isGeneral = category === 'general';
   const studentLevel = normalizeText(payload.studentLevel);
   const studentName = normalizeText(payload.studentName);
   const parentName = normalizeText(payload.parentName);
@@ -501,11 +510,11 @@ function validateRegistration(payload) {
   const email = normalizeText(payload.email);
   const { attendeeCount, lunchBoxCount } = normalizeRegistrationCounts(payload);
 
-  if (!['existing', 'waitlist'].includes(category)) {
+  if (!['existing', 'waitlist', 'general'].includes(category)) {
     return 'Parent category is required.';
   }
 
-  if (!studentLevel || !studentName || !parentName || !phone || !email) {
+  if (!studentLevel || !studentName || (!isGeneral && !parentName) || !phone || !email) {
     return 'Student level, student name, parent name, phone, and email are required.';
   }
 
@@ -519,6 +528,10 @@ function validateRegistration(payload) {
 
   if (attendeeCount < 1 || attendeeCount > 3) {
     return 'Number of attendees must be 1, 2, or 3.';
+  }
+
+  if (isGeneral && attendeeCount > 2) {
+    return 'General registration tickets must be 1 or 2.';
   }
 
   if (attendeeCount === 3 && !allowsThreeAttendeesForLevel(studentLevel)) {
@@ -559,7 +572,19 @@ function getParentStatus(category) {
     return 'waiting_list_parent';
   }
 
+  if (normalizedCategory === 'general') {
+    return 'general';
+  }
+
   return 'not_registered';
+}
+
+function getTicketPriceForCategory(category) {
+  return normalizeText(category) === 'general' ? generalTicketPrice : ticketPrice;
+}
+
+function getTotalAmountForCategory(category, attendeeCount) {
+  return Number(attendeeCount || 0) * getTicketPriceForCategory(category);
 }
 
 function getVerificationMessage(status) {
@@ -644,7 +669,7 @@ function toRegistration(payload, existingRows) {
   const category = normalizeText(payload.category || payload.parentCategory);
   const now = new Date().toISOString();
   const { attendeeCount, lunchBoxCount } = normalizeRegistrationCounts(payload);
-  const resolvedTicketPrice = ticketPrice;
+  const resolvedTicketPrice = getTicketPriceForCategory(category);
 
   return {
     id: randomUUID(),
@@ -660,7 +685,7 @@ function toRegistration(payload, existingRows) {
     lunchBoxCount,
     seatNumber: normalizeText(payload.seatNumber) || createSeatNumbers(attendeeCount, existingRows),
     ticketPrice: resolvedTicketPrice,
-    totalAmount: attendeeCount * resolvedTicketPrice,
+    totalAmount: getTotalAmountForCategory(category, attendeeCount),
     paymentStatus: 'pending',
     paymentProofFilename: normalizeText(payload.paymentProofFilename),
     status: 'confirmed',
@@ -907,6 +932,7 @@ async function createJsonRepository() {
         ok: true,
         storage: 'json',
         ticketPrice,
+        generalTicketPrice,
         ticketQuota,
         usedSeats: getUsedSeatCount(store.registrations),
         remainingSeats: Math.max(ticketQuota - getUsedSeatCount(store.registrations), 0)
@@ -918,6 +944,7 @@ async function createJsonRepository() {
       const usedSeats = getUsedSeatCount(store.registrations);
       return {
         ticketPrice,
+        generalTicketPrice,
         ticketQuota,
         usedSeats,
         remainingSeats: Math.max(ticketQuota - usedSeats, 0)
@@ -1020,6 +1047,7 @@ async function createJsonRepository() {
     async create(payload) {
       const store = await readStore();
       const category = normalizeText(payload.category || payload.parentCategory);
+      const isGeneral = category === 'general';
       const parentStatus = getParentStatus(category);
       const { attendeeCount } = normalizeRegistrationCounts(payload);
       const { lunchBoxCount } = normalizeRegistrationCounts(payload);
@@ -1031,15 +1059,21 @@ async function createJsonRepository() {
       const reusableDraft = draftRegistration
         && !normalizeText(draftRegistration.paymentProofFilename)
         && (!normalizeText(draftRegistration.paymentStatus) || normalizeText(draftRegistration.paymentStatus) === 'pending');
-      const verification = await verifyJsonStudentName(store, {
-        studentName: payload.studentName,
-        parentStatus
-      });
+      const verification = isGeneral
+        ? {
+          status: 'verified',
+          matchedStudentId: null,
+          notes: 'General registration does not require eligible student verification.'
+        }
+        : await verifyJsonStudentName(store, {
+          studentName: payload.studentName,
+          parentStatus
+        });
       let verificationStatus = verification.status;
       let duplicateReferenceId = null;
       let verificationNotes = verification.notes;
 
-      if (verification.status === 'verified') {
+      if (verification.status === 'verified' && !isGeneral) {
         const duplicateCheck = checkJsonExistingRegistration(store, {
           matchedStudentId: verification.matchedStudentId,
           studentName: payload.studentName,
@@ -1061,6 +1095,7 @@ async function createJsonRepository() {
         throw error;
       }
 
+      const resolvedTicketPrice = getTicketPriceForCategory(category);
       const now = new Date().toISOString();
       const registration = {
         ...(reusableDraft ? draftRegistration : {}),
@@ -1071,14 +1106,14 @@ async function createJsonRepository() {
         waitingListStatus: normalizeText(payload.waitingListStatus),
         studentLevel: normalizeText(payload.studentLevel),
         studentName: normalizeText(payload.studentName),
-        parentName: normalizeText(payload.parentName),
+        parentName: normalizeText(payload.parentName) || (isGeneral ? normalizeText(payload.studentName) : ''),
         phone: normalizeText(payload.phone),
         email: normalizeText(payload.email),
         attendeeCount,
         lunchBoxCount,
         seatNumber: '',
-        ticketPrice,
-        totalAmount: attendeeCount * ticketPrice,
+        ticketPrice: resolvedTicketPrice,
+        totalAmount: getTotalAmountForCategory(category, attendeeCount),
         paymentStatus: 'pending',
         paymentProofFilename: '',
         verificationStatus,
@@ -1137,12 +1172,14 @@ async function createJsonRepository() {
         throw error;
       }
 
-      const duplicateCheck = checkJsonExistingRegistration(store, {
-        matchedStudentId: current.matchedStudentId,
-        studentName: current.studentName,
-        parentStatus: current.parentStatus,
-        excludeRegistrationId: current.id
-      });
+      const duplicateCheck = current.parentCategory === 'general'
+        ? { exists: false }
+        : checkJsonExistingRegistration(store, {
+          matchedStudentId: current.matchedStudentId,
+          studentName: current.studentName,
+          parentStatus: current.parentStatus,
+          excludeRegistrationId: current.id
+        });
 
       if (duplicateCheck.exists) {
         const next = {
@@ -1184,13 +1221,14 @@ async function createJsonRepository() {
         ? createSeatNumbers(attendeeCount, existingRows)
         : normalizeText(current.seatNumber);
 
+      const resolvedTicketPrice = Number(current.ticketPrice || getTicketPriceForCategory(current.parentCategory));
       const next = {
         ...current,
         attendeeCount,
         lunchBoxCount,
         seatNumber,
-        ticketPrice,
-        totalAmount: attendeeCount * ticketPrice,
+        ticketPrice: resolvedTicketPrice,
+        totalAmount: getTotalAmountForCategory(current.parentCategory, attendeeCount),
         paymentStatus: 'pending',
         paymentProofFilename: await storePaymentProof(payload, current.registrationId),
         updatedAt: new Date().toISOString()
@@ -1436,6 +1474,7 @@ async function createPostgresRepository() {
       const usedSeats = getUsedSeatCount(rows);
       return {
         ticketPrice,
+        generalTicketPrice,
         ticketQuota,
         usedSeats,
         remainingSeats: Math.max(ticketQuota - usedSeats, 0)
@@ -1635,10 +1674,13 @@ async function createPostgresRepository() {
 
     async create(payload) {
       const category = normalizeText(payload.category || payload.parentCategory);
+      const isGeneral = category === 'general';
       const parentStatus = getParentStatus(category);
       const { attendeeCount, lunchBoxCount } = normalizeRegistrationCounts(payload);
       const draftRegistrationId = normalizeText(payload.registrationId || payload.registration_id || payload.id);
       let draftRegistration = null;
+
+      await ensureVerificationSchema(pool);
 
       if (draftRegistrationId) {
         const draftResult = await pool.query(
@@ -1651,15 +1693,21 @@ async function createPostgresRepository() {
       const reusableDraft = draftRegistration
         && !normalizeText(draftRegistration.payment_proof_data)
         && (!normalizeText(draftRegistration.payment_status) || normalizeText(draftRegistration.payment_status) === 'pending');
-      const verification = await verifyStudentName({
-        studentName: payload.studentName,
-        parentStatus
-      });
+      const verification = isGeneral
+        ? {
+          status: 'verified',
+          matchedStudentId: null,
+          notes: 'General registration does not require eligible student verification.'
+        }
+        : await verifyStudentName({
+          studentName: payload.studentName,
+          parentStatus
+        });
       let verificationStatus = verification.status;
       let duplicateReferenceId = null;
       let verificationNotes = verification.notes;
 
-      if (verification.status === 'verified') {
+      if (verification.status === 'verified' && !isGeneral) {
         const duplicateCheck = await checkExistingRegistration({
           matchedStudentId: verification.matchedStudentId,
           studentName: payload.studentName,
@@ -1694,6 +1742,7 @@ async function createPostgresRepository() {
       const registrationId = reusableDraft
         ? draftRegistration.registration_id
         : `GPS-2026-${String(nextId).padStart(4, '0')}`;
+      const resolvedTicketPrice = getTicketPriceForCategory(category);
 
       const values = [
         registrationId,
@@ -1702,7 +1751,7 @@ async function createPostgresRepository() {
         normalizeText(payload.waitingListStatus),
         normalizeText(payload.studentLevel),
         normalizeText(payload.studentName),
-        normalizeText(payload.parentName),
+        normalizeText(payload.parentName) || (isGeneral ? normalizeText(payload.studentName) : ''),
         normalizeText(payload.phone),
         normalizeText(payload.email),
         attendeeCount,
@@ -1711,8 +1760,8 @@ async function createPostgresRepository() {
         verification.matchedStudentId,
         duplicateReferenceId,
         verificationNotes,
-        ticketPrice,
-        attendeeCount * ticketPrice
+        resolvedTicketPrice,
+        getTotalAmountForCategory(category, attendeeCount)
       ];
 
       const result = reusableDraft
@@ -1811,12 +1860,14 @@ async function createPostgresRepository() {
         throw error;
       }
 
-      const duplicateCheck = await checkExistingRegistration({
-        matchedStudentId: current.matched_student_id,
-        studentName: current.student_name,
-        parentStatus: current.parent_status,
-        excludeRegistrationId: current.id
-      });
+      const duplicateCheck = current.parent_category === 'general'
+        ? { exists: false }
+        : await checkExistingRegistration({
+          matchedStudentId: current.matched_student_id,
+          studentName: current.student_name,
+          parentStatus: current.parent_status,
+          excludeRegistrationId: current.id
+        });
 
       if (duplicateCheck.exists) {
         const duplicateResult = await pool.query(
@@ -1866,6 +1917,7 @@ async function createPostgresRepository() {
       }
 
       const proof = parsePaymentProofForDatabase(payload, current.registration_id);
+      const resolvedTicketPrice = Number(current.ticket_price || getTicketPriceForCategory(current.parent_category));
       const result = await pool.query(
         `UPDATE registrations
          SET seat_number = $1,
@@ -1886,8 +1938,8 @@ async function createPostgresRepository() {
           proof.filename,
           proof.mimeType,
           proof.base64Data,
-          ticketPrice,
-          attendeeCount * ticketPrice,
+          resolvedTicketPrice,
+          getTotalAmountForCategory(current.parent_category, attendeeCount),
           current.id
         ]
       );

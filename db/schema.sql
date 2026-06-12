@@ -1,7 +1,7 @@
 CREATE TABLE registrations (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   registration_id TEXT NOT NULL UNIQUE,
-  parent_category TEXT NOT NULL CHECK (parent_category IN ('existing', 'waitlist')),
+  parent_category TEXT NOT NULL CHECK (parent_category IN ('existing', 'waitlist', 'general')),
   waiting_list_status TEXT,
   student_level TEXT NOT NULL,
   student_name TEXT NOT NULL,
