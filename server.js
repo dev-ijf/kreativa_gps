@@ -14,7 +14,7 @@ const paymentProofDir = path.join(__dirname, 'uploads', 'payment-proofs');
 loadEnvFile();
 
 const port = Number(process.env.PORT || 3000);
-const ticketPrice = normalizeCurrency(process.env.TICKET_PRICE || 0);
+const ticketPrice = normalizeCurrency(process.env.TICKET_PRICE || 50000);
 const generalTicketPrice = normalizeCurrency(process.env.GENERAL_TICKET_PRICE || 300000);
 const ticketQuota = normalizeQuota(process.env.TICKET_QUOTA || 800);
 const usePostgres = Boolean(
@@ -2473,6 +2473,12 @@ async function handleApi(request, response, url) {
   // ── Auth routes ────────────────────────────────────────────────────────────
 
   if (route === '/api/auth/google' && request.method === 'GET') {
+    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+      response.writeHead(302, { Location: '/admin/login?error=oauth_config_missing' });
+      response.end();
+      return;
+    }
+
     const protocol = (request.headers['x-forwarded-proto'] || 'http').split(',')[0].trim();
     const host = request.headers['x-forwarded-host'] || request.headers.host;
     const redirectUri = `${protocol}://${host}/api/auth/callback`;

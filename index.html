@@ -56,12 +56,12 @@
     </div><!-- Flow A -->
     <form id="flow-a" class="hidden mt-8 space-y-5" onsubmit="showConfirmation(event)">
     <select name="studentLevel" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Jenjang Siswa</option><option>Kindergarten 1</option><option>Kindergarten 2</option><option>Grade 1</option><option>Grade 2</option><option>Grade 3</option><option>Grade 7</option><option>Grade 10</option></select> <div><input name="studentName" type="text" placeholder="Nama Lengkap Siswa (sesuai data sekolah)" class="w-full p-4 rounded-xl border border-gray-200" required><p class="mt-2 text-xs text-slate-500">Mohon isi nama lengkap siswa sesuai dengan data sekolah.</p></div> <input name="parentName" type="text" placeholder="Nama Orang Tua" class="w-full p-4 rounded-xl border border-gray-200" required> <input name="phone" type="tel" placeholder="Nomor Telepon (WhatsApp)" class="w-full p-4 rounded-xl border border-gray-200" required> <input name="email" type="email" placeholder="Alamat Email" class="w-full p-4 rounded-xl border border-gray-200" required> <select name="attendeeCount" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Jumlah Kehadiran</option><option>1</option><option>2</option><option>3</option></select> <select name="lunchBoxCount" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Paket Snack &amp; Makan Siang</option><option>1</option><option>2</option><option>3</option></select>
-     <div class="price-summary rounded-xl border border-[#ED3A5F]/40 bg-[#fefdf8] p-4">
+<div class="price-summary hidden rounded-xl border border-[#ED3A5F]/40 bg-[#fefdf8] p-4">
       <div class="flex justify-between gap-4 text-sm"><span class="text-slate-500">Paket Snack &amp; Makan Siang</span><span data-price-label class="font-semibold text-[#1a2744]">-</span></div>
       <div class="flex justify-between gap-4 text-sm mt-2"><span class="text-slate-500">Jumlah</span><span data-quantity-label class="font-semibold text-[#1a2744]">-</span></div>
       <div class="flex justify-between gap-4 border-t border-[#ED3A5F]/30 mt-3 pt-3"><span class="font-semibold text-[#1a2744]">Total Pembayaran</span><span data-total-label class="font-bold text-[#ED3A5F]">-</span></div>
      </div>
-     <div id="payment-a" class="rounded-2xl border border-gray-100 p-6 card-shadow">
+<div id="payment-a" class="hidden rounded-2xl border border-gray-100 p-6 card-shadow">
       <h3 data-template-id="payment-title" class="canva-text font-semibold mb-4"></h3>
       <div data-template-id="qris-card" class="canva-card rounded-xl p-6 text-center">
        <p data-template-id="qris-label" class="canva-text text-sm mb-2"></p>
@@ -80,12 +80,12 @@
      <select name="waitingListStatus" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Status Daftar Tunggu</option><option value="paid_commitment_fee">Sudah Membayar Biaya Komitmen Rp 5.000.000</option><option value="not_yet">Belum</option></select>
      <div id="flow-b-registration-fields" class="space-y-5">
       <select name="studentLevel" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Jenjang yang Dituju</option><option>Kindergarten 1</option><option>Kindergarten 2</option><option>Grade 1</option><option>Grade 2</option><option>Grade 3</option><option>Grade 7</option><option>Grade 10</option></select> <div><input name="studentName" type="text" placeholder="Nama Lengkap Siswa (sesuai data sekolah)" class="w-full p-4 rounded-xl border border-gray-200" required><p class="mt-2 text-xs text-slate-500">Mohon isi nama lengkap siswa sesuai dengan data sekolah.</p></div> <input name="parentName" type="text" placeholder="Nama Orang Tua" class="w-full p-4 rounded-xl border border-gray-200" required> <input name="phone" type="tel" placeholder="Nomor Telepon (WhatsApp)" class="w-full p-4 rounded-xl border border-gray-200" required> <input name="email" type="email" placeholder="Alamat Email" class="w-full p-4 rounded-xl border border-gray-200" required> <select name="attendeeCount" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Jumlah Kehadiran</option><option>1</option><option>2</option><option>3</option></select> <select name="lunchBoxCount" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Paket Snack &amp; Makan Siang</option><option>1</option><option>2</option><option>3</option></select>
-     <div class="price-summary rounded-xl border border-[#ED3A5F]/40 bg-[#fefdf8] p-4">
+     <div class="price-summary hidden rounded-xl border border-[#ED3A5F]/40 bg-[#fefdf8] p-4">
       <div class="flex justify-between gap-4 text-sm"><span class="text-slate-500">Paket Snack &amp; Makan Siang</span><span data-price-label class="font-semibold text-[#1a2744]">-</span></div>
       <div class="flex justify-between gap-4 text-sm mt-2"><span class="text-slate-500">Jumlah</span><span data-quantity-label class="font-semibold text-[#1a2744]">-</span></div>
       <div class="flex justify-between gap-4 border-t border-[#ED3A5F]/30 mt-3 pt-3"><span class="font-semibold text-[#1a2744]">Total Pembayaran</span><span data-total-label class="font-bold text-[#ED3A5F]">-</span></div>
      </div>
-     <div id="payment-b" class="rounded-2xl border border-gray-100 p-6 card-shadow">
+<div id="payment-b" class="hidden rounded-2xl border border-gray-100 p-6 card-shadow">
       <h3 data-template-id="payment-title-b" class="canva-text font-semibold mb-4"></h3>
       <div data-template-id="qris-card-b" class="canva-card rounded-xl p-6 text-center">
        <p data-template-id="qris-label-b" class="canva-text text-sm mb-2"></p>
@@ -136,12 +136,12 @@
      <input name="phone" type="tel" placeholder="Nomor HP" class="w-full p-4 rounded-xl border border-gray-200" required>
      <input name="email" type="email" placeholder="Email" class="w-full p-4 rounded-xl border border-gray-200" required>
      <select name="attendeeCount" class="w-full p-4 rounded-xl border border-gray-200" required><option value="">Tiket</option><option value="1">1 orang</option><option value="2">2 orang</option></select>
-     <div class="price-summary rounded-xl border border-[#ED3A5F]/40 bg-[#fefdf8] p-4">
+     <div class="price-summary hidden rounded-xl border border-[#ED3A5F]/40 bg-[#fefdf8] p-4">
       <div class="flex justify-between gap-4 text-sm"><span class="text-slate-500">Paket Snack &amp; Makan Siang</span><span data-price-label class="font-semibold text-[#1a2744]">-</span></div>
       <div class="flex justify-between gap-4 text-sm mt-2"><span class="text-slate-500">Jumlah</span><span data-quantity-label class="font-semibold text-[#1a2744]">-</span></div>
       <div class="flex justify-between gap-4 border-t border-[#ED3A5F]/30 mt-3 pt-3"><span class="font-semibold text-[#1a2744]">Total Pembayaran</span><span data-total-label class="font-bold text-[#ED3A5F]">-</span></div>
      </div>
-     <div id="payment-d" class="rounded-2xl border border-gray-100 p-6 card-shadow">
+<div id="payment-d" class="hidden rounded-2xl border border-gray-100 p-6 card-shadow">
       <h3 class="canva-text font-semibold mb-4">QRIS Payment</h3>
       <div class="canva-card rounded-xl p-6 text-center">
        <p class="canva-text text-sm mb-2">Scan QRIS untuk pembayaran</p>
@@ -183,11 +183,11 @@
     <div id="interest-section" class="hidden mt-8">
      <div class="canva-card card-shadow rounded-2xl p-10 text-center">
       <i data-lucide="info" class="w-12 h-12 mx-auto text-[#ED3A5F] mb-4"></i>
-      <h3 class="canva-text text-2xl font-semibold text-[#1a2744]">Terima Kasih atas Ketertarikan Anda</h3>
-      <p class="canva-text text-lg leading-relaxed mt-4">Silakan hubungi tim admission kami untuk permintaan undangan khusus apabila kuota masih tersedia.</p>
-      <p class="canva-text text-base leading-relaxed mt-4 text-[#4a5568]">Jika anak Anda sudah terdaftar di Kreativa Global School tetapi nama siswa tidak ditemukan, silakan hubungi admin kami melalui WhatsApp agar kami dapat memeriksa ejaan nama atau memperbarui data.</p>
-      <p class="canva-text text-lg leading-relaxed mt-4">Global Parenting Summit 2026 saat ini khusus untuk:</p>
-      <ul class="mt-4 space-y-2 text-left text-[#1a2744] max-w-md mx-auto">
+      <h3 data-interest-title class="canva-text text-2xl font-semibold text-[#1a2744]">Terima Kasih atas Ketertarikan Anda</h3>
+      <p data-interest-primary class="canva-text text-lg leading-relaxed mt-4">Silakan hubungi tim admission kami untuk permintaan undangan khusus apabila kuota masih tersedia.</p>
+      <p data-interest-secondary class="canva-text text-base leading-relaxed mt-4 text-[#4a5568]">Jika anak Anda sudah terdaftar di Kreativa Global School tetapi nama siswa tidak ditemukan, silakan hubungi admin kami melalui WhatsApp agar kami dapat memeriksa ejaan nama atau memperbarui data.</p>
+      <p data-interest-exclusive class="canva-text text-lg leading-relaxed mt-4">Global Parenting Summit 2026 saat ini khusus untuk:</p>
+      <ul data-interest-list class="mt-4 space-y-2 text-left text-[#1a2744] max-w-md mx-auto">
        <li class="flex gap-3"><span class="text-[#ED3A5F] font-bold">&bull;</span><span>Orang tua siswa aktif Tahun Akademik 2026/2027</span></li>
        <li class="flex gap-3"><span class="text-[#ED3A5F] font-bold">&bull;</span><span>Keluarga yang telah mengamankan komitmen daftar tunggu 2027/2028</span></li>
       </ul>

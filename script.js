@@ -40,7 +40,7 @@ const imageSources = {
 let generatedSeatNumber = '';
 let currentRegistration = null;
 const appConfig = {
-  ticketPrice: 0,
+  ticketPrice: 50000,
   generalTicketPrice: 300000,
   ticketQuota: 800
 };
@@ -220,7 +220,7 @@ async function loadConfig() {
     }
 
     const config = await response.json();
-    appConfig.ticketPrice = Number(config.ticketPrice || 0);
+    appConfig.ticketPrice = Number(config.ticketPrice || appConfig.ticketPrice);
     appConfig.generalTicketPrice = Number(config.generalTicketPrice || appConfig.generalTicketPrice);
     appConfig.ticketQuota = Number(config.ticketQuota || 800);
     updateAllPriceSummaries();
@@ -848,8 +848,8 @@ function setInterestSectionCopy() {
 
   if (isExisting) {
     if (title) title.textContent = 'Mohon Maaf';
-    if (primary) primary.textContent = 'Mohon maaf, nama anak Bapak/Ibu belum terdaftar sebagai siswa Kreativa Global School untuk Tahun Ajaran 2026/2027.';
-    if (secondary) secondary.textContent = 'Apabila anak Bapak/Ibu sudah terdaftar, kemungkinan terdapat perbedaan atau kesalahan dalam penulisan nama. Silakan menghubungi tim Admin kami melalui WhatsApp untuk konfirmasi data atau mendapatkan bantuan lebih lanjut.';
+    if (primary) primary.textContent = 'Mohon maaf, nama anak Bapak/Ibu belum terdaftar sebagai siswa Kreativa Global School Tahun Ajaran 2026/2027.';
+    if (secondary) secondary.textContent = 'Silakan menghubungi tim Admission kami melalui WhatsApp untuk konfirmasi data atau mendapatkan bantuan lebih lanjut.';
     hideExclusiveList();
     return;
   }

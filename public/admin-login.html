@@ -45,7 +45,8 @@
      const messages = {
        not_registered: 'Email Anda tidak terdaftar sebagai admin. Hubungi operator untuk mendapatkan akses.',
        inactive: 'Akun Anda telah dinonaktifkan. Hubungi operator untuk informasi lebih lanjut.',
-       oauth_failed: 'Login dengan Google gagal. Silakan coba lagi.'
+       oauth_failed: 'Login dengan Google gagal. Silakan coba lagi.',
+       oauth_config_missing: 'Login Google belum dikonfigurasi. Mohon isi GOOGLE_CLIENT_ID dan GOOGLE_CLIENT_SECRET di environment variable.'
      };
 
      banner.textContent = messages[error] || 'Terjadi kesalahan. Silakan coba lagi.';
