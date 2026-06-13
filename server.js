@@ -2323,6 +2323,17 @@ const SESSION_MAX_AGE = 8 * 60 * 60;
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
 
+function getGoogleRedirectUri(request) {
+  const configuredRedirectUri = normalizeText(process.env.GOOGLE_REDIRECT_URI);
+  if (configuredRedirectUri) {
+    return configuredRedirectUri;
+  }
+
+  const protocol = (request.headers['x-forwarded-proto'] || 'http').split(',')[0].trim();
+  const host = request.headers['x-forwarded-host'] || request.headers.host;
+  return `${protocol}://${host}/api/auth/callback`;
+}
+
 function base64UrlEncode(input) {
   const str = typeof input === 'string' ? input : JSON.stringify(input);
   return Buffer.from(str).toString('base64url');
@@ -2479,9 +2490,7 @@ async function handleApi(request, response, url) {
       return;
     }
 
-    const protocol = (request.headers['x-forwarded-proto'] || 'http').split(',')[0].trim();
-    const host = request.headers['x-forwarded-host'] || request.headers.host;
-    const redirectUri = `${protocol}://${host}/api/auth/callback`;
+    const redirectUri = getGoogleRedirectUri(request);
     const state = randomBytes(16).toString('hex');
     const params = new URLSearchParams({
       client_id: GOOGLE_CLIENT_ID,
@@ -2505,9 +2514,7 @@ async function handleApi(request, response, url) {
       return;
     }
 
-    const protocol = (request.headers['x-forwarded-proto'] || 'http').split(',')[0].trim();
-    const host = request.headers['x-forwarded-host'] || request.headers.host;
-    const redirectUri = `${protocol}://${host}/api/auth/callback`;
+    const redirectUri = getGoogleRedirectUri(request);
 
     try {
       const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
