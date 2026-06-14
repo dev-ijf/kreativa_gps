@@ -561,6 +561,7 @@ function getFriendlyErrorMessage(error) {
     'Number of attendees must be 1, 2, or 3.': 'Jumlah kehadiran harus 1, 2, atau 3.',
     'Three attendees are only available for Grade 7 and Grade 10.': 'Jumlah kehadiran 3 hanya tersedia untuk Grade 7 dan Grade 10.',
     'Lunch box reservation must match number of attendees.': 'Paket Snack & Makan Siang harus sama dengan jumlah kehadiran.',
+    'Enrollment plan is required for general registration.': 'Rencana tahun ajaran wajib dipilih untuk kategori Umum.',
     'Payment proof is required.': 'Bukti pembayaran wajib diunggah.',
     'Payment proof upload is only available for verified registrations.': 'Unggah bukti pembayaran hanya tersedia untuk pendaftaran yang sudah terverifikasi.',
     'Payment is only available for verified registrations.': 'Pembayaran hanya tersedia untuk pendaftaran yang sudah terverifikasi.',
@@ -643,6 +644,7 @@ async function buildRegistrationPayload(form, options = {}) {
     parentName: category === 'general' ? studentName : normalizeInputValue(formData.get('parentName')),
     phone: normalizeInputValue(formData.get('phone')),
     email: normalizeInputValue(formData.get('email')),
+    enrollmentPlan: normalizeInputValue(formData.get('enrollmentPlan')),
     attendeeCount,
     lunchBoxCount: attendeeCount,
     paymentProofFilename: preparedPaymentProof.filename,
@@ -911,6 +913,7 @@ function drawRoundedRect(ctx, x, y, width, height, radius) {
 }
 
 function drawTicketCanvas(ctx, ticket) {
+  const isGeneralTicket = ticket.parentCategory === 'general';
   ctx.fillStyle = '#f6f8fb';
   ctx.fillRect(0, 0, 600, 800);
 
@@ -943,35 +946,43 @@ function drawTicketCanvas(ctx, ticket) {
   ctx.font = 'bold 16px Poppins, sans-serif';
   ctx.fillText('E-TICKET', 300, 235);
 
+  const nameLabelY = isGeneralTicket ? 292 : 306;
+  const nameValueY = isGeneralTicket ? 320 : 334;
+  const statsY = isGeneralTicket ? 382 : 440;
+  const scheduleY = isGeneralTicket ? 486 : 544;
+  const noteY = isGeneralTicket ? 660 : 718;
+
   ctx.textAlign = 'left';
   ctx.fillStyle = '#94a3b8';
   ctx.font = '12px Poppins, sans-serif';
-  ctx.fillText('NAMA SISWA', 84, 306);
+  ctx.fillText(isGeneralTicket ? 'NAMA PESERTA' : 'NAMA SISWA', 84, nameLabelY);
   ctx.fillStyle = '#1a2744';
   ctx.font = 'bold 20px Poppins, sans-serif';
-  ctx.fillText(fitCanvasText(ctx, ticket.studentName, 430), 84, 334);
+  ctx.fillText(fitCanvasText(ctx, isGeneralTicket ? ticket.parentName : ticket.studentName, 430), 84, nameValueY);
 
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = '12px Poppins, sans-serif';
-  ctx.fillText('NAMA ORANG TUA', 84, 378);
-  ctx.fillStyle = '#1a2744';
-  ctx.font = 'bold 20px Poppins, sans-serif';
-  ctx.fillText(fitCanvasText(ctx, ticket.parentName, 430), 84, 406);
+  if (!isGeneralTicket) {
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '12px Poppins, sans-serif';
+    ctx.fillText('NAMA ORANG TUA', 84, 378);
+    ctx.fillStyle = '#1a2744';
+    ctx.font = 'bold 20px Poppins, sans-serif';
+    ctx.fillText(fitCanvasText(ctx, ticket.parentName, 430), 84, 406);
+  }
 
   [['NOMOR KURSI', ticket.seatNumber || '-'], ['PESERTA', `${ticket.attendeeCount || '-'} peserta`]].forEach(([label, value], index) => {
     const x = index === 0 ? 84 : 314;
-    drawRoundedRect(ctx, x, 440, 202, 82, 16);
+    drawRoundedRect(ctx, x, statsY, 202, 82, 16);
     ctx.fillStyle = '#f8fafc';
     ctx.fill();
     ctx.fillStyle = '#94a3b8';
     ctx.font = '11px Poppins, sans-serif';
-    ctx.fillText(label, x + 18, 470);
+    ctx.fillText(label, x + 18, statsY + 30);
     ctx.fillStyle = '#1a2744';
     ctx.font = 'bold 20px Poppins, sans-serif';
-    ctx.fillText(fitCanvasText(ctx, value, 166), x + 18, 500);
+    ctx.fillText(fitCanvasText(ctx, value, 166), x + 18, statsY + 60);
   });
 
-  drawRoundedRect(ctx, 84, 544, 432, 144, 18);
+  drawRoundedRect(ctx, 84, scheduleY, 432, 144, 18);
   ctx.fillStyle = '#f3f7ff';
   ctx.fill();
 
@@ -980,7 +991,7 @@ function drawTicketCanvas(ctx, ticket) {
     ['WAKTU', '08:00 - 16:00 WIB'],
     ['LOKASI', 'Exibition Hall (Lantai 3),']
   ].forEach(([label, value], index) => {
-    const y = 580 + index * 34;
+    const y = scheduleY + 36 + index * 34;
     ctx.fillStyle = '#94a3b8';
     ctx.font = 'bold 10px Poppins, sans-serif';
     ctx.fillText(label, 108, y);
@@ -990,11 +1001,11 @@ function drawTicketCanvas(ctx, ticket) {
   });
   ctx.fillStyle = '#1a2744';
   ctx.font = 'bold 13px Poppins, sans-serif';
-  ctx.fillText('Summarecon Mall Bandung', 228, 682);
+  ctx.fillText('Summarecon Mall Bandung', 228, scheduleY + 138);
 
   ctx.fillStyle = '#64748b';
   ctx.font = '11px Poppins, sans-serif';
-  ctx.fillText('* Mohon simpan e-ticket ini untuk ditunjukkan saat registrasi ulang.', 84, 718);
+  ctx.fillText('* Mohon simpan e-ticket ini untuk ditunjukkan saat registrasi ulang.', 84, noteY);
 }
 
 function isLimitedDownloadBrowser() {
@@ -1183,6 +1194,7 @@ function downloadTicket() {
     registrationId: document.getElementById('reg-id').textContent,
     studentName: currentRegistration?.studentName,
     parentName: currentRegistration?.parentName,
+    parentCategory: currentRegistration?.parentCategory,
     seatNumber: document.getElementById('seat-display').textContent,
     attendeeCount: currentRegistration?.attendeeCount
   });

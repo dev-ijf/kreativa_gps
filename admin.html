@@ -256,14 +256,14 @@
      </div>
      <div class="mb-4 rounded-lg bg-blue-50 border border-blue-100 px-4 py-3">
       <h3 id="admin-form-title" class="font-semibold text-[#1a2744]">Tambah Admin Baru</h3>
-      <p class="text-sm text-slate-600 mt-1">Password minimal 8 karakter. Kosongkan password saat edit untuk tidak mengubah password.</p>
+      <p class="text-sm text-slate-600 mt-1">Admin login menggunakan akun Google. Username dibuat otomatis dari email admin.</p>
      </div>
-     <form id="admin-form" class="grid md:grid-cols-[1.5fr_1fr_1.5fr_1fr_150px_auto] gap-3">
+     <form id="admin-form" class="grid md:grid-cols-[1.5fr_1.5fr_150px_auto] gap-3">
       <input type="hidden" name="id">
+      <input type="hidden" name="username">
+      <input type="hidden" name="password">
       <input name="name" type="text" placeholder="Nama lengkap" class="w-full p-3 rounded-lg border border-slate-200" required>
-      <input name="username" type="text" placeholder="Username" class="w-full p-3 rounded-lg border border-slate-200" required>
       <input name="email" type="email" placeholder="Email" class="w-full p-3 rounded-lg border border-slate-200" required>
-      <input name="password" type="password" placeholder="Password" class="w-full p-3 rounded-lg border border-slate-200">
       <select name="role" class="w-full p-3 rounded-lg border border-slate-200" required>
        <option value="admin">Admin</option>
        <option value="superadmin">Super Admin</option>

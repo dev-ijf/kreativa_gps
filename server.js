@@ -172,6 +172,9 @@ async function ensureVerificationSchema(pool) {
     ADD COLUMN IF NOT EXISTS payment_proof_data TEXT;
 
     ALTER TABLE registrations
+    ADD COLUMN IF NOT EXISTS enrollment_plan TEXT;
+
+    ALTER TABLE registrations
     ALTER COLUMN seat_number DROP NOT NULL;
 
     ALTER TABLE registrations
@@ -508,6 +511,7 @@ function validateRegistration(payload) {
   const parentName = normalizeText(payload.parentName);
   const phone = normalizeText(payload.phone);
   const email = normalizeText(payload.email);
+  const enrollmentPlan = normalizeText(payload.enrollmentPlan);
   const { attendeeCount, lunchBoxCount } = normalizeRegistrationCounts(payload);
 
   if (!['existing', 'waitlist', 'general'].includes(category)) {
@@ -516,6 +520,10 @@ function validateRegistration(payload) {
 
   if (!studentLevel || !studentName || (!isGeneral && !parentName) || !phone || !email) {
     return 'Student level, student name, parent name, phone, and email are required.';
+  }
+
+  if (isGeneral && !enrollmentPlan) {
+    return 'Enrollment plan is required for general registration.';
   }
 
   if (!/^\d+$/.test(phone)) {
@@ -681,6 +689,7 @@ function toRegistration(payload, existingRows) {
     parentName: normalizeText(payload.parentName),
     phone: normalizeText(payload.phone),
     email: normalizeText(payload.email),
+    enrollmentPlan: normalizeText(payload.enrollmentPlan),
     attendeeCount,
     lunchBoxCount,
     seatNumber: normalizeText(payload.seatNumber) || createSeatNumbers(attendeeCount, existingRows),
@@ -861,6 +870,7 @@ function toCamelRow(row) {
     parentName: row.parent_name,
     phone: row.phone,
     email: row.email,
+    enrollmentPlan: row.enrollment_plan || row.enrollmentPlan || '',
     attendeeCount: row.attendee_count,
     lunchBoxCount: row.lunch_box_count,
     seatNumber: row.seat_number,
@@ -1531,9 +1541,10 @@ async function createPostgresRepository() {
           student_level,
           student_name,
           parent_name,
-          phone,
-          email,
-          attendee_count,
+       phone,
+       email,
+       enrollment_plan,
+       attendee_count,
           lunch_box_count,
           seat_number,
           ticket_price,
@@ -1754,6 +1765,7 @@ async function createPostgresRepository() {
         normalizeText(payload.parentName) || (isGeneral ? normalizeText(payload.studentName) : ''),
         normalizeText(payload.phone),
         normalizeText(payload.email),
+        normalizeText(payload.enrollmentPlan),
         attendeeCount,
         lunchBoxCount,
         verificationStatus,
@@ -1776,17 +1788,18 @@ async function createPostgresRepository() {
                parent_name = $7,
                phone = $8,
                email = $9,
-               attendee_count = $10,
-               lunch_box_count = $11,
-               verification_status = $12,
-               matched_student_id = $13,
-               duplicate_reference_id = $14,
-               verification_notes = $15,
-               ticket_price = $16,
-               total_amount = $17,
+               enrollment_plan = NULLIF($10::text, ''),
+               attendee_count = $11,
+               lunch_box_count = $12,
+               verification_status = $13,
+               matched_student_id = $14,
+               duplicate_reference_id = $15,
+               verification_notes = $16,
+               ticket_price = $17,
+               total_amount = $18,
                payment_status = 'pending',
                seat_number = NULL
-           WHERE id = $18
+           WHERE id = $19
            RETURNING *`,
           [...values, draftRegistration.id]
         )
@@ -1801,6 +1814,7 @@ async function createPostgresRepository() {
           parent_name,
           phone,
           email,
+          enrollment_plan,
           attendee_count,
           lunch_box_count,
           verification_status,
@@ -1810,8 +1824,8 @@ async function createPostgresRepository() {
           ticket_price,
           total_amount
         ) VALUES (
-          $1, $2, $3, NULLIF($4::text, ''), $5, $6, $7, $8, $9, $10,
-          $11, $12, $13, $14, $15, $16, $17
+          $1, $2, $3, NULLIF($4::text, ''), $5, $6, $7, $8, $9, NULLIF($10::text, ''), $11,
+          $12, $13, $14, $15, $16, $17, $18
         )
         RETURNING *`,
           values
@@ -2051,7 +2065,7 @@ function toAdminRow(row) {
 }
 
 function validateAdminPayload(payload, partial = false) {
-  const username = normalizeText(payload.username);
+  const username = normalizeAdminUsername(payload.username || payload.email || payload.name);
   const email = normalizeText(payload.email);
   const name = normalizeText(payload.name);
   const password = normalizeText(payload.password);
@@ -2059,10 +2073,8 @@ function validateAdminPayload(payload, partial = false) {
   const validRoles = new Set(['superadmin', 'admin']);
 
   if (!partial) {
-    if (!username) return 'Username is required.';
     if (!email) return 'Email is required.';
     if (!name) return 'Name is required.';
-    if (!password) return 'Password is required.';
   }
 
   if (username && !/^[a-z0-9_]{3,80}$/.test(username)) {
@@ -2084,6 +2096,25 @@ function validateAdminPayload(payload, partial = false) {
   }
 
   return '';
+}
+
+function normalizeAdminUsername(value) {
+  const normalized = normalizeText(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9_]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .replace(/_+/g, '_')
+    .slice(0, 72);
+
+  return normalized.length >= 3 ? normalized : `admin_${randomBytes(4).toString('hex')}`;
+}
+
+function resolveAdminUsername(payload) {
+  return normalizeAdminUsername(payload.username || payload.email || payload.name);
+}
+
+function resolveAdminPassword(payload) {
+  return normalizeText(payload.password) || randomBytes(24).toString('base64url');
 }
 
 async function createPostgresAdminRepository() {
@@ -2142,9 +2173,9 @@ async function createPostgresAdminRepository() {
          VALUES ($1, $2, $3, $4, $5)
          RETURNING id, username, email, name, role, is_active, created_at, updated_at`,
         [
-          normalizeText(payload.username),
+          resolveAdminUsername(payload),
           normalizeText(payload.email),
-          hashPassword(normalizeText(payload.password)),
+          hashPassword(resolveAdminPassword(payload)),
           normalizeText(payload.name),
           normalizeText(payload.role) || 'admin'
         ]
@@ -2160,7 +2191,7 @@ async function createPostgresAdminRepository() {
       const values = [];
 
       if (payload.username !== undefined) {
-        values.push(normalizeText(payload.username));
+        values.push(normalizeAdminUsername(payload.username));
         sets.push(`username = $${values.length}`);
       }
       if (payload.email !== undefined) {
@@ -2251,9 +2282,9 @@ function createJsonAdminRepository() {
       const now = new Date().toISOString();
       const newAdmin = {
         id: rows.length ? Math.max(...rows.map(r => Number(r.id))) + 1 : 1,
-        username: normalizeText(payload.username),
+        username: resolveAdminUsername(payload),
         email: normalizeText(payload.email),
-        password_hash: hashPassword(normalizeText(payload.password)),
+        password_hash: hashPassword(resolveAdminPassword(payload)),
         name: normalizeText(payload.name),
         role: normalizeText(payload.role) || 'admin',
         isActive: true,
@@ -2274,7 +2305,7 @@ function createJsonAdminRepository() {
       if (index === -1) return null;
       const current = rows[index];
       const next = { ...current, updatedAt: new Date().toISOString() };
-      if (payload.username !== undefined) next.username = normalizeText(payload.username);
+      if (payload.username !== undefined) next.username = normalizeAdminUsername(payload.username);
       if (payload.email !== undefined) next.email = normalizeText(payload.email);
       if (payload.name !== undefined) next.name = normalizeText(payload.name);
       if (payload.password !== undefined) next.password_hash = hashPassword(normalizeText(payload.password));

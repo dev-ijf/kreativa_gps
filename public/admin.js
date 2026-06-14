@@ -386,6 +386,7 @@ function exportRegistrationsToExcel() {
     'Parent Name',
     'Phone',
     'Email',
+    'Rencana Tahun Ajaran',
     'Category',
     'Waiting List Status',
     'Attendance',
@@ -407,6 +408,7 @@ function exportRegistrationsToExcel() {
     row.parentName,
     row.phone,
     row.email,
+    row.enrollmentPlan,
     formatCategory(row.parentCategory),
     row.waitingListStatus,
     row.attendeeCount,
@@ -464,6 +466,7 @@ function drawRoundedRect(ctx, x, y, width, height, radius) {
 }
 
 function drawTicketCanvas(ctx, ticket) {
+  const isGeneralTicket = ticket.parentCategory === 'general';
   ctx.fillStyle = '#f6f8fb';
   ctx.fillRect(0, 0, 600, 800);
 
@@ -496,35 +499,43 @@ function drawTicketCanvas(ctx, ticket) {
   ctx.font = 'bold 16px Poppins, sans-serif';
   ctx.fillText('E-TICKET', 300, 235);
 
+  const nameLabelY = isGeneralTicket ? 292 : 306;
+  const nameValueY = isGeneralTicket ? 320 : 334;
+  const statsY = isGeneralTicket ? 382 : 440;
+  const scheduleY = isGeneralTicket ? 486 : 544;
+  const noteY = isGeneralTicket ? 660 : 718;
+
   ctx.textAlign = 'left';
   ctx.fillStyle = '#94a3b8';
   ctx.font = '12px Poppins, sans-serif';
-  ctx.fillText('NAMA SISWA', 84, 306);
+  ctx.fillText(isGeneralTicket ? 'NAMA PESERTA' : 'NAMA SISWA', 84, nameLabelY);
   ctx.fillStyle = '#1a2744';
   ctx.font = 'bold 20px Poppins, sans-serif';
-  ctx.fillText(fitCanvasText(ctx, ticket.studentName, 430), 84, 334);
+  ctx.fillText(fitCanvasText(ctx, isGeneralTicket ? ticket.parentName : ticket.studentName, 430), 84, nameValueY);
 
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = '12px Poppins, sans-serif';
-  ctx.fillText('NAMA ORANG TUA', 84, 378);
-  ctx.fillStyle = '#1a2744';
-  ctx.font = 'bold 20px Poppins, sans-serif';
-  ctx.fillText(fitCanvasText(ctx, ticket.parentName, 430), 84, 406);
+  if (!isGeneralTicket) {
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '12px Poppins, sans-serif';
+    ctx.fillText('NAMA ORANG TUA', 84, 378);
+    ctx.fillStyle = '#1a2744';
+    ctx.font = 'bold 20px Poppins, sans-serif';
+    ctx.fillText(fitCanvasText(ctx, ticket.parentName, 430), 84, 406);
+  }
 
   [['NOMOR KURSI', ticket.seatNumber || '-'], ['PESERTA', `${ticket.attendeeCount || '-'} peserta`]].forEach(([label, value], index) => {
     const x = index === 0 ? 84 : 314;
-    drawRoundedRect(ctx, x, 440, 202, 82, 16);
+    drawRoundedRect(ctx, x, statsY, 202, 82, 16);
     ctx.fillStyle = '#f8fafc';
     ctx.fill();
     ctx.fillStyle = '#94a3b8';
     ctx.font = '11px Poppins, sans-serif';
-    ctx.fillText(label, x + 18, 470);
+    ctx.fillText(label, x + 18, statsY + 30);
     ctx.fillStyle = '#1a2744';
     ctx.font = 'bold 20px Poppins, sans-serif';
-    ctx.fillText(fitCanvasText(ctx, value, 166), x + 18, 500);
+    ctx.fillText(fitCanvasText(ctx, value, 166), x + 18, statsY + 60);
   });
 
-  drawRoundedRect(ctx, 84, 544, 432, 144, 18);
+  drawRoundedRect(ctx, 84, scheduleY, 432, 144, 18);
   ctx.fillStyle = '#f3f7ff';
   ctx.fill();
 
@@ -533,7 +544,7 @@ function drawTicketCanvas(ctx, ticket) {
     ['WAKTU', '08:00 - 16:00 WIB'],
     ['LOKASI', 'Exibition Hall (Lantai 3),']
   ].forEach(([label, value], index) => {
-    const y = 580 + index * 34;
+    const y = scheduleY + 36 + index * 34;
     ctx.fillStyle = '#94a3b8';
     ctx.font = 'bold 10px Poppins, sans-serif';
     ctx.fillText(label, 108, y);
@@ -543,11 +554,11 @@ function drawTicketCanvas(ctx, ticket) {
   });
   ctx.fillStyle = '#1a2744';
   ctx.font = 'bold 13px Poppins, sans-serif';
-  ctx.fillText('Summarecon Mall Bandung', 228, 682);
+  ctx.fillText('Summarecon Mall Bandung', 228, scheduleY + 138);
 
   ctx.fillStyle = '#64748b';
   ctx.font = '11px Poppins, sans-serif';
-  ctx.fillText('* Mohon simpan e-ticket ini untuk ditunjukkan saat registrasi ulang.', 84, 718);
+  ctx.fillText('* Mohon simpan e-ticket ini untuk ditunjukkan saat registrasi ulang.', 84, noteY);
 }
 
 function paymentProofUrl(filename) {
@@ -597,6 +608,7 @@ function openTicketImage(row, ticketWindow) {
     registrationId: row.registrationId,
     studentName: row.studentName,
     parentName: row.parentName,
+    parentCategory: row.parentCategory,
     seatNumber: row.seatNumber,
     attendeeCount: row.attendeeCount
   });
@@ -829,6 +841,7 @@ function renderCurrentPage() {
         <div class="font-medium leading-snug">${escapeHtml(row.parentName)}</div>
         <div class="text-slate-500 break-all">${escapeHtml(row.phone)}</div>
         <div class="text-slate-500 break-all">${escapeHtml(row.email)}</div>
+        ${row.enrollmentPlan ? `<div class="text-xs text-[#1f3f8f] mt-2">Rencana daftar: ${escapeHtml(row.enrollmentPlan)}</div>` : ''}
       </td>
       <td class="px-3 py-4 break-words">
         <span class="inline-flex px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 leading-tight">${formatCategory(row.parentCategory)}</span>
@@ -1225,8 +1238,9 @@ function resetAdminForm() {
   adminForm.elements.id.value = '';
   editingAdminId = null;
   if (adminFormTitle) adminFormTitle.textContent = 'Tambah Admin Baru';
-  adminForm.elements.password.placeholder = 'Password';
-  adminForm.elements.password.required = true;
+  adminForm.elements.username.value = '';
+  adminForm.elements.password.value = '';
+  adminForm.elements.password.required = false;
   adminCancelBtn?.classList.add('hidden');
 }
 
@@ -1238,7 +1252,6 @@ function fillAdminForm(admin) {
   adminForm.elements.username.value = admin.username;
   adminForm.elements.email.value = admin.email;
   adminForm.elements.password.value = '';
-  adminForm.elements.password.placeholder = 'Password baru (kosong = tidak diubah)';
   adminForm.elements.password.required = false;
   adminForm.elements.role.value = admin.role;
   if (adminFormTitle) adminFormTitle.textContent = `Edit Admin: ${admin.name}`;
