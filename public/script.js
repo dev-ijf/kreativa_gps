@@ -120,7 +120,7 @@ function hidePaymentSections(form = document) {
   }
 }
 
-function showPaymentSection(form, registration) {
+function showPaymentSection(form, registration, options = {}) {
   currentRegistration = registration;
   form.dataset.registrationId = registration.id || registration.registrationId || '';
   form.dataset.verificationStatus = 'verified';
@@ -132,7 +132,11 @@ function showPaymentSection(form, registration) {
   setSubmitLabel(form, 'Kirim Bukti Pembayaran');
 
   const paymentSection = form.querySelector('#payment-a, #payment-b');
-  paymentSection?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if (options.scrollTarget === 'form') {
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } else {
+    paymentSection?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
 }
 
 function showGeneralPaymentSection(form) {
@@ -769,7 +773,7 @@ async function loadPaymentContinuationLink() {
     fillRegistrationForm(form, registration, { markVerified: false });
 
     if (isPaymentLinkContinuable(registration)) {
-      showPaymentSection(form, registration);
+      showPaymentSection(form, registration, { scrollTarget: 'form' });
       return;
     }
 
@@ -777,7 +781,7 @@ async function loadPaymentContinuationLink() {
       const recheckResult = await verifyRegistration(form);
 
       if (recheckResult.status === 'verified') {
-        showPaymentSection(form, recheckResult.registration);
+        showPaymentSection(form, recheckResult.registration, { scrollTarget: 'form' });
         return;
       }
 
