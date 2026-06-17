@@ -75,6 +75,7 @@ function optionHtml(options, selected) {
 function formatCategory(category) {
   return {
     existing: 'Existing Parent',
+    existing_2027: 'Orang Tua Siswa Aktif 2027/2028',
     waitlist: 'Waiting List',
     general: 'Umum'
   }[category] || category || '-';
@@ -83,6 +84,7 @@ function formatCategory(category) {
 function formatStudentParentStatus(parentStatus) {
   const labels = {
     existing_parent: 'Siswa Aktif 2026/2027',
+    existing_parent_2027: 'Siswa Aktif 2027/2028',
     waiting_list_parent: 'Waiting List 2027/2028',
     has_not_registered: 'Has Not Registered'
   };
@@ -1019,6 +1021,7 @@ function renderStudentsCurrentPage() {
         ${isEditing ? `
         <select data-student-field="parentStatus" class="w-full p-2 rounded-lg border border-slate-200 text-sm">
           <option value="existing_parent" ${student.parentStatus === 'existing_parent' ? 'selected' : ''}>Siswa Aktif 2026/2027</option>
+          <option value="existing_parent_2027" ${student.parentStatus === 'existing_parent_2027' ? 'selected' : ''}>Siswa Aktif 2027/2028</option>
           <option value="waiting_list_parent" ${student.parentStatus === 'waiting_list_parent' ? 'selected' : ''}>Waiting List 2027/2028</option>
           <option value="has_not_registered" ${student.parentStatus === 'has_not_registered' ? 'selected' : ''}>Has Not Registered</option>
         </select>

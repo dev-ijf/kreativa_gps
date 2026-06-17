@@ -187,6 +187,7 @@ function handleParentTypeChange(event) {
 
   const selectedFlow = {
     existing: 'flow-a',
+    existing_2027: 'flow-a',
     waitlist: 'flow-b',
     new: 'flow-c',
     general: 'flow-d'
@@ -833,6 +834,7 @@ function setInterestSectionCopy() {
   const list = section.querySelector('[data-interest-list]');
   const parentType = getSelectedCategory();
   const isExisting = parentType === 'existing';
+  const isExisting2027 = parentType === 'existing_2027';
   const isWaitlist = parentType === 'waitlist';
 
   const hideExclusiveList = () => {
@@ -851,6 +853,14 @@ function setInterestSectionCopy() {
   if (isExisting) {
     if (title) title.textContent = 'Mohon Maaf';
     if (primary) primary.textContent = 'Mohon maaf, nama anak Bapak/Ibu belum terdaftar sebagai siswa Kreativa Global School Tahun Ajaran 2026/2027.';
+    if (secondary) secondary.textContent = 'Silakan menghubungi tim Admission kami melalui WhatsApp untuk konfirmasi data atau mendapatkan bantuan lebih lanjut.';
+    hideExclusiveList();
+    return;
+  }
+
+  if (isExisting2027) {
+    if (title) title.textContent = 'Mohon Maaf';
+    if (primary) primary.textContent = 'Mohon maaf, nama anak Bapak/Ibu belum terdaftar sebagai siswa Kreativa Global School Tahun Ajaran 2027/2028.';
     if (secondary) secondary.textContent = 'Silakan menghubungi tim Admission kami melalui WhatsApp untuk konfirmasi data atau mendapatkan bantuan lebih lanjut.';
     hideExclusiveList();
     return;

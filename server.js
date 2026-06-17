@@ -61,7 +61,7 @@ const allowedUpdates = new Set([
   'attendeeCount',
   'lunchBoxCount'
 ]);
-const eligibleParentStatuses = new Set(['existing_parent', 'waiting_list_parent', 'has_not_registered']);
+const eligibleParentStatuses = new Set(['existing_parent', 'existing_parent_2027', 'waiting_list_parent', 'has_not_registered']);
 
 const paymentStatuses = new Set(['pending', 'verified', 'rejected', 'paid', 'confirmed', 'waiting_confirmation', 'failed', 'canceled', 'cancelled', 'expired']);
 const registrationStatuses = new Set(['confirmed', 'cancelled', 'attended']);
@@ -134,7 +134,7 @@ async function ensureVerificationSchema(pool) {
       id SERIAL PRIMARY KEY,
       student_name VARCHAR(255) NOT NULL,
       parent_status VARCHAR(100) NOT NULL CHECK (
-        parent_status IN ('existing_parent', 'waiting_list_parent', 'has_not_registered')
+        parent_status IN ('existing_parent', 'existing_parent_2027', 'waiting_list_parent', 'has_not_registered')
       ),
       grade VARCHAR(100),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -145,7 +145,7 @@ async function ensureVerificationSchema(pool) {
 
     ALTER TABLE eligible_students
     ADD CONSTRAINT eligible_students_parent_status_check
-    CHECK (parent_status IN ('existing_parent', 'waiting_list_parent', 'has_not_registered'));
+    CHECK (parent_status IN ('existing_parent', 'existing_parent_2027', 'waiting_list_parent', 'has_not_registered'));
 
     ALTER TABLE registrations
     ADD COLUMN IF NOT EXISTS parent_status VARCHAR(100);
@@ -198,7 +198,7 @@ async function ensureVerificationSchema(pool) {
 
     ALTER TABLE registrations
     ADD CONSTRAINT registrations_parent_category_check
-    CHECK (parent_category IN ('existing', 'waitlist', 'general'));
+    CHECK (parent_category IN ('existing', 'existing_2027', 'waitlist', 'general'));
 
     ALTER TABLE registrations
     ADD CONSTRAINT registrations_verification_status_check
@@ -522,7 +522,7 @@ function validateRegistration(payload) {
   const enrollmentPlan = normalizeText(payload.enrollmentPlan);
   const { attendeeCount, lunchBoxCount } = normalizeRegistrationCounts(payload);
 
-  if (!['existing', 'waitlist', 'general'].includes(category)) {
+  if (!['existing', 'existing_2027', 'waitlist', 'general'].includes(category)) {
     return 'Parent category is required.';
   }
 
@@ -582,6 +582,10 @@ function getParentStatus(category) {
 
   if (normalizedCategory === 'existing') {
     return 'existing_parent';
+  }
+
+  if (normalizedCategory === 'existing_2027') {
+    return 'existing_parent_2027';
   }
 
   if (normalizedCategory === 'waitlist') {
