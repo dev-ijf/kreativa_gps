@@ -741,6 +741,8 @@ async function loadPaymentContinuationLink() {
     return;
   }
 
+  document.getElementById('registration')?.scrollIntoView({ behavior: 'auto', block: 'start' });
+
   try {
     const response = await fetch(`/api/registrations/${encodeURIComponent(registrationId)}`);
     const result = await response.json();
@@ -1266,7 +1268,8 @@ function initPage() {
   setupUploadZones();
   setupContactValidation();
   hidePaymentSections();
-  loadConfig().then(loadPaymentContinuationLink);
+  loadConfig();
+  loadPaymentContinuationLink();
 
   if (window.lucide) {
     window.lucide.createIcons();
