@@ -904,8 +904,9 @@ function filterRegistrations(rows, searchParams) {
       row.seatNumber
     ].join(' ').toLowerCase();
     const phoneDigits = normalizeText(row.phone).replace(/\D/g, '');
+    const seatDigits = normalizeText(row.seatNumber).replace(/\D/g, '');
 
-    return (!search || searchable.includes(search) || (searchDigits && phoneDigits.includes(searchDigits)))
+    return (!search || searchable.includes(search) || (searchDigits && (phoneDigits.includes(searchDigits) || seatDigits.includes(searchDigits))))
       && (!category || row.parentCategory === category)
       && (!studentLevel || row.studentLevel === studentLevel)
       && (!status || row.status === status)
@@ -1625,17 +1626,28 @@ async function createPostgresRepository() {
       const studentLevel = normalizeText(searchParams.get('studentLevel'));
       const status = normalizeText(searchParams.get('status'));
       const paymentStatus = normalizeText(searchParams.get('paymentStatus'));
+      const searchDigits = search.replace(/\D/g, '');
 
       if (search) {
         params.push(`%${search}%`);
-        where.push(`(
+        const searchConditions = [`(
           registration_id ILIKE $${params.length}
           OR student_name ILIKE $${params.length}
           OR parent_name ILIKE $${params.length}
           OR phone ILIKE $${params.length}
           OR email ILIKE $${params.length}
           OR seat_number ILIKE $${params.length}
-        )`);
+        )`];
+
+        if (searchDigits) {
+          params.push(`%${searchDigits}%`);
+          searchConditions.push(`(
+            REGEXP_REPLACE(phone, '\\D', '', 'g') ILIKE $${params.length}
+            OR REGEXP_REPLACE(COALESCE(seat_number, ''), '\\D', '', 'g') ILIKE $${params.length}
+          )`);
+        }
+
+        where.push(`(${searchConditions.join(' OR ')})`);
       }
 
       if (category) {
