@@ -110,7 +110,7 @@ function setSubmitLabel(form, label) {
 }
 
 function hidePaymentSections(form = document) {
-  form.querySelectorAll('.price-summary, #payment-a, #payment-b').forEach(section => {
+  form.querySelectorAll('.price-summary, #payment-a, #payment-b, #payment-d').forEach(section => {
     section.classList.add('hidden');
   });
 
@@ -120,20 +120,53 @@ function hidePaymentSections(form = document) {
   }
 }
 
+function getPaymentContinuationId() {
+  const params = new URLSearchParams(window.location.search);
+  return normalizeInputValue(params.get('registration') || params.get('pay') || '');
+}
+
+function scrollToRegistrationTarget(target, behavior = 'smooth') {
+  const element = target || document.getElementById('registration');
+  if (!element) return;
+
+  const scroll = () => {
+    const top = element.getBoundingClientRect().top + window.scrollY - 24;
+    window.scrollTo({ top: Math.max(0, top), behavior });
+  };
+
+  scroll();
+  requestAnimationFrame(scroll);
+  setTimeout(scroll, 150);
+  setTimeout(scroll, 650);
+}
+
+function resolveParentCategory(registration) {
+  const parentCategory = normalizeInputValue(registration?.parentCategory);
+  if (['existing', 'existing_2027', 'waitlist', 'general'].includes(parentCategory)) {
+    return parentCategory;
+  }
+
+  const parentStatus = normalizeInputValue(registration?.parentStatus);
+  if (parentStatus === 'existing_parent_2027') return 'existing_2027';
+  if (parentStatus === 'waiting_list_parent') return 'waitlist';
+  if (parentStatus === 'general') return 'general';
+  return 'existing';
+}
+
 function showPaymentSection(form, registration, options = {}) {
   currentRegistration = registration;
   form.dataset.registrationId = registration.id || registration.registrationId || '';
   form.dataset.verificationStatus = 'verified';
-  form.querySelectorAll('.price-summary, #payment-a, #payment-b').forEach(section => {
+  form.querySelectorAll('.price-summary, #payment-a, #payment-b, #payment-d').forEach(section => {
     section.classList.remove('hidden');
   });
   setPaymentFieldsEnabled(form, true);
   updatePriceSummary(form);
   setSubmitLabel(form, 'Kirim Bukti Pembayaran');
 
-  const paymentSection = form.querySelector('#payment-a, #payment-b');
+  const paymentSection = form.querySelector('#payment-a, #payment-b, #payment-d');
   if (options.scrollTarget === 'form') {
-    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    scrollToRegistrationTarget(form, options.scrollBehavior || 'smooth');
   } else {
     paymentSection?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
@@ -738,14 +771,13 @@ function fillRegistrationForm(form, registration, options = {}) {
 }
 
 async function loadPaymentContinuationLink() {
-  const params = new URLSearchParams(window.location.search);
-  const registrationId = normalizeInputValue(params.get('registration') || params.get('pay') || '');
+  const registrationId = getPaymentContinuationId();
 
   if (!registrationId) {
     return;
   }
 
-  document.getElementById('registration')?.scrollIntoView({ behavior: 'auto', block: 'start' });
+  scrollToRegistrationTarget(document.getElementById('registration'), 'auto');
 
   try {
     const response = await fetch(`/api/registrations/${encodeURIComponent(registrationId)}`);
@@ -756,13 +788,14 @@ async function loadPaymentContinuationLink() {
     }
 
     const registration = result.registration;
+    const category = resolveParentCategory(registration);
     const parentType = document.getElementById('parent-type');
-    parentType.value = registration.parentCategory;
+    parentType.value = category;
     parentType.dispatchEvent(new Event('change', { bubbles: true }));
 
-    const form = registration.parentCategory === 'waitlist'
+    const form = category === 'waitlist'
       ? document.getElementById('flow-b')
-      : registration.parentCategory === 'general'
+      : category === 'general'
         ? document.getElementById('flow-d')
         : document.getElementById('flow-a');
 
@@ -771,6 +804,7 @@ async function loadPaymentContinuationLink() {
     }
 
     fillRegistrationForm(form, registration, { markVerified: false });
+    scrollToRegistrationTarget(form, 'auto');
 
     if (isPaymentLinkContinuable(registration)) {
       showPaymentSection(form, registration, { scrollTarget: 'form' });
@@ -1264,6 +1298,9 @@ function setupContactValidation() {
 
 function initPage() {
   normalizeVisibleUrl();
+  if (getPaymentContinuationId() && 'scrollRestoration' in history) {
+    history.scrollRestoration = 'manual';
+  }
   fillTemplateContent();
   document.getElementById('parent-type').addEventListener('change', handleParentTypeChange);
   setupIdentityChangeReset();
