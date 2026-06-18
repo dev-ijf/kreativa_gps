@@ -47,6 +47,8 @@ const appConfig = {
 const maxDirectUploadBytes = 2_000_000;
 const maxPaymentProofDataUrlLength = 2_800_000;
 const maxPaymentProofImageDimension = 1400;
+let paymentContinuationScrollTarget = null;
+let paymentContinuationScrollTimer = null;
 
 function normalizeVisibleUrl() {
   if (window.location.pathname.endsWith('/index.html')) {
@@ -138,6 +140,32 @@ function scrollToRegistrationTarget(target, behavior = 'smooth') {
   requestAnimationFrame(scroll);
   setTimeout(scroll, 150);
   setTimeout(scroll, 650);
+}
+
+function keepPaymentContinuationInView(target) {
+  paymentContinuationScrollTarget = target || paymentContinuationScrollTarget || document.getElementById('registration');
+
+  if (paymentContinuationScrollTimer) {
+    clearInterval(paymentContinuationScrollTimer);
+  }
+
+  let attempts = 0;
+  paymentContinuationScrollTimer = setInterval(() => {
+    attempts += 1;
+    scrollToRegistrationTarget(paymentContinuationScrollTarget, 'auto');
+
+    if (attempts >= 12) {
+      clearInterval(paymentContinuationScrollTimer);
+      paymentContinuationScrollTimer = null;
+    }
+  }, 250);
+}
+
+function stopKeepingPaymentContinuationInView() {
+  if (paymentContinuationScrollTimer) {
+    clearInterval(paymentContinuationScrollTimer);
+    paymentContinuationScrollTimer = null;
+  }
 }
 
 function resolveParentCategory(registration) {
@@ -777,7 +805,7 @@ async function loadPaymentContinuationLink() {
     return;
   }
 
-  scrollToRegistrationTarget(document.getElementById('registration'), 'auto');
+  keepPaymentContinuationInView(document.getElementById('registration'));
 
   try {
     const response = await fetch(`/api/registrations/${encodeURIComponent(registrationId)}`);
@@ -804,10 +832,10 @@ async function loadPaymentContinuationLink() {
     }
 
     fillRegistrationForm(form, registration, { markVerified: false });
-    scrollToRegistrationTarget(form, 'auto');
+    keepPaymentContinuationInView(form);
 
     if (isPaymentLinkContinuable(registration)) {
-      showPaymentSection(form, registration, { scrollTarget: 'form' });
+      showPaymentSection(form, registration, { scrollTarget: 'form', scrollBehavior: 'auto' });
       return;
     }
 
@@ -815,25 +843,29 @@ async function loadPaymentContinuationLink() {
       const recheckResult = await verifyRegistration(form);
 
       if (recheckResult.status === 'verified') {
-        showPaymentSection(form, recheckResult.registration, { scrollTarget: 'form' });
+        showPaymentSection(form, recheckResult.registration, { scrollTarget: 'form', scrollBehavior: 'auto' });
         return;
       }
 
       if (recheckResult.status === 'need_review') {
+        stopKeepingPaymentContinuationInView();
         showReviewSection(recheckResult.registration_id);
         return;
       }
 
       if (recheckResult.status === 'already_registered') {
+        stopKeepingPaymentContinuationInView();
         showAlreadyRegisteredSection(recheckResult.registration_id);
         return;
       }
 
+      stopKeepingPaymentContinuationInView();
       showInterestSection(recheckResult.registration_id);
       return;
     }
 
     if (registration.verificationStatus === 'need_review') {
+      stopKeepingPaymentContinuationInView();
       showReviewSection(registration.id);
       return;
     }
@@ -841,12 +873,15 @@ async function loadPaymentContinuationLink() {
     if (registration.verificationStatus === 'already_registered'
       || registration.paymentProofFilename
       || ['verified', 'paid', 'confirmed', 'waiting_confirmation'].includes(String(registration.paymentStatus || '').trim())) {
+      stopKeepingPaymentContinuationInView();
       showAlreadyRegisteredSection(registration.id);
       return;
     }
 
+    stopKeepingPaymentContinuationInView();
     showInterestSection(registration.id);
   } catch (error) {
+    stopKeepingPaymentContinuationInView();
     alert(getFriendlyErrorMessage(error));
   }
 }
