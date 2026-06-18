@@ -350,7 +350,7 @@ function updateAttendanceAvailability(form) {
   ['attendeeCount', 'lunchBoxCount'].forEach(name => {
     const select = form.querySelector(`[name="${name}"]`);
 
-    if (!select) {
+    if (!select || !select.options) {
       return;
     }
 
@@ -380,7 +380,7 @@ function setupAttendanceLunchSync() {
     const lunchSelect = form.querySelector('[name="lunchBoxCount"]');
     const studentLevelSelect = form.querySelector('[name="studentLevel"]');
 
-    if (!attendeeSelect || !lunchSelect) {
+    if (!attendeeSelect || !lunchSelect || !attendeeSelect.options || !lunchSelect.options) {
       return;
     }
 
