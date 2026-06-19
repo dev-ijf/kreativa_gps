@@ -88,9 +88,19 @@
 
    <div id="registrations-panel" data-admin-panel="registrations">
    <section class="bg-white border border-slate-200 rounded-xl p-4 md:p-5 mb-5">
-    <div class="grid md:grid-cols-[1fr_150px_180px_180px_180px_180px_auto_auto] gap-3">
+    <div class="grid md:grid-cols-[1fr_180px_auto_auto] gap-3">
      <input id="search-input" type="search" placeholder="Cari nama orang tua, nama siswa, nomor telepon, email, atau ID" class="w-full p-3 rounded-lg border border-slate-200">
      <input id="seat-search-input" type="search" placeholder="Nomor kursi" class="w-full p-3 rounded-lg border border-slate-200">
+     <button id="refresh-btn" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-[#1a2744] text-white font-medium">
+      <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+      Refresh
+     </button>
+     <button id="export-excel-btn" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-[#ED3A5F] text-white font-medium">
+      <i data-lucide="file-spreadsheet" class="w-5 h-5"></i>
+      Export Excel
+     </button>
+    </div>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
      <select id="category-filter" class="w-full p-3 rounded-lg border border-slate-200">
       <option value="">All Categories</option>
       <option value="existing">Existing Parent</option>
@@ -120,14 +130,6 @@
       <option value="attended">Attended</option>
       <option value="cancelled">Cancelled</option>
      </select>
-     <button id="refresh-btn" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-[#1a2744] text-white font-medium">
-      <i data-lucide="refresh-cw" class="w-5 h-5"></i>
-      Refresh
-     </button>
-     <button id="export-excel-btn" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-[#ED3A5F] text-white font-medium">
-      <i data-lucide="file-spreadsheet" class="w-5 h-5"></i>
-      Export Excel
-     </button>
     </div>
     <div id="registration-count-summary" class="mt-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm"></div>
    </section>
