@@ -907,10 +907,14 @@ function filterRegistrations(rows, searchParams) {
     ].join(' ').toLowerCase();
     const phoneDigits = normalizeText(row.phone).replace(/\D/g, '');
     const seatDigits = normalizeText(row.seatNumber).replace(/\D/g, '');
-    const seatText = normalizeText(row.seatNumber).toLowerCase();
+    const seatTokens = normalizeText(row.seatNumber).split(',')
+      .map(seat => seat.trim())
+      .filter(Boolean);
+    const hasMatchingSeat = !seatSearch || seatTokens.some(seat =>
+      seat.toLowerCase() === seatSearch || (seatSearchDigits && seat.replace(/\D/g, '') === seatSearchDigits));
 
     return (!search || searchable.includes(search) || (searchDigits && (phoneDigits.includes(searchDigits) || seatDigits.includes(searchDigits))))
-      && (!seatSearch || seatText.includes(seatSearch) || (seatSearchDigits && seatDigits.includes(seatSearchDigits)))
+      && hasMatchingSeat
       && (!category || row.parentCategory === category)
       && (!studentLevel || row.studentLevel === studentLevel)
       && (!status || row.status === status)
@@ -1657,12 +1661,20 @@ async function createPostgresRepository() {
       }
 
       if (seatSearch) {
-        params.push(`%${seatSearch}%`);
-        const seatConditions = [`seat_number ILIKE $${params.length}`];
+        params.push(seatSearch.toLowerCase());
+        const seatConditions = [`EXISTS (
+          SELECT 1
+          FROM regexp_split_to_table(COALESCE(seat_number, ''), ',') AS split_seat(seat_value)
+          WHERE LOWER(TRIM(seat_value)) = $${params.length}
+        )`];
 
         if (seatSearchDigits) {
-          params.push(`%${seatSearchDigits}%`);
-          seatConditions.push(`REGEXP_REPLACE(COALESCE(seat_number, ''), '\\D', '', 'g') ILIKE $${params.length}`);
+          params.push(seatSearchDigits);
+          seatConditions.push(`EXISTS (
+            SELECT 1
+            FROM regexp_split_to_table(COALESCE(seat_number, ''), ',') AS split_seat(seat_value)
+            WHERE REGEXP_REPLACE(TRIM(seat_value), '\\D', '', 'g') = $${params.length}
+          )`);
         }
 
         where.push(`(${seatConditions.join(' OR ')})`);
