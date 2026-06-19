@@ -17,6 +17,10 @@ const port = Number(process.env.PORT || 3000);
 const ticketPrice = normalizeCurrency(process.env.TICKET_PRICE || 50000);
 const generalTicketPrice = normalizeCurrency(process.env.GENERAL_TICKET_PRICE || 300000);
 const ticketQuota = normalizeQuota(process.env.TICKET_QUOTA || 800);
+const registrationClosed = normalizeBoolean(
+  process.env.registrationClosed ?? process.env.REGISTRATION_CLOSED,
+  false
+);
 const usePostgres = Boolean(
   process.env.DATABASE_URL
     || process.env.POSTGRES_URL
@@ -82,6 +86,22 @@ const columnMap = {
 function normalizeCurrency(value) {
   const number = Number.parseInt(value, 10);
   return Number.isFinite(number) && number >= 0 ? number : 0;
+}
+
+function normalizeBoolean(value, fallback = false) {
+  if (value === undefined || value === null || value === '') {
+    return fallback;
+  }
+
+  const normalized = String(value).trim().toLowerCase();
+  if (['1', 'true', 'yes', 'y', 'on'].includes(normalized)) {
+    return true;
+  }
+  if (['0', 'false', 'no', 'n', 'off'].includes(normalized)) {
+    return false;
+  }
+
+  return fallback;
 }
 
 function getDatabaseUrl() {
@@ -2857,6 +2877,11 @@ async function handleApi(request, response, url) {
     const healthData = await repository.health();
     if (!bypassCache) cacheSet('cache:health', healthData);
     sendJson(response, 200, healthData);
+    return;
+  }
+
+  if (route === '/api/public-config' && request.method === 'GET') {
+    sendJson(response, 200, { registrationClosed });
     return;
   }
 

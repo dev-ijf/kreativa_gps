@@ -1331,6 +1331,41 @@ function setupContactValidation() {
   });
 }
 
+function applyRegistrationClosedState(isClosed) {
+  const closedSection = document.getElementById('registration-closed');
+  const registrationSection = document.getElementById('registration');
+  const heroCta = document.querySelector('[data-template-id="hero-cta"]');
+
+  if (!closedSection || !registrationSection || getPaymentContinuationId()) {
+    return;
+  }
+
+  closedSection.classList.toggle('hidden', !isClosed);
+  registrationSection.classList.toggle('hidden', isClosed);
+
+  if (heroCta) {
+    const targetId = isClosed ? 'registration-closed' : 'registration';
+    heroCta.onclick = () => document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth' });
+  }
+}
+
+async function loadPublicConfig() {
+  try {
+    const response = await fetch('/api/public-config', {
+      headers: { 'X-Bypass-Cache': '1' }
+    });
+
+    if (!response.ok) {
+      return;
+    }
+
+    const config = await response.json();
+    applyRegistrationClosedState(Boolean(config.registrationClosed));
+  } catch {
+    applyRegistrationClosedState(false);
+  }
+}
+
 function initPage() {
   normalizeVisibleUrl();
   if (getPaymentContinuationId() && 'scrollRestoration' in history) {
@@ -1344,6 +1379,7 @@ function initPage() {
   setupUploadZones();
   setupContactValidation();
   hidePaymentSections();
+  loadPublicConfig();
   loadConfig();
   loadPaymentContinuationLink();
 
