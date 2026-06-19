@@ -888,7 +888,9 @@ function checkJsonExistingGeneralRegistration(store, { participantName, phone, e
 
 function filterRegistrations(rows, searchParams) {
   const search = normalizeText(searchParams.get('search')).toLowerCase();
+  const seatSearch = normalizeText(searchParams.get('seatSearch')).toLowerCase();
   const searchDigits = search.replace(/\D/g, '');
+  const seatSearchDigits = seatSearch.replace(/\D/g, '');
   const category = normalizeText(searchParams.get('category'));
   const studentLevel = normalizeText(searchParams.get('studentLevel'));
   const status = normalizeText(searchParams.get('status'));
@@ -905,8 +907,10 @@ function filterRegistrations(rows, searchParams) {
     ].join(' ').toLowerCase();
     const phoneDigits = normalizeText(row.phone).replace(/\D/g, '');
     const seatDigits = normalizeText(row.seatNumber).replace(/\D/g, '');
+    const seatText = normalizeText(row.seatNumber).toLowerCase();
 
     return (!search || searchable.includes(search) || (searchDigits && (phoneDigits.includes(searchDigits) || seatDigits.includes(searchDigits))))
+      && (!seatSearch || seatText.includes(seatSearch) || (seatSearchDigits && seatDigits.includes(seatSearchDigits)))
       && (!category || row.parentCategory === category)
       && (!studentLevel || row.studentLevel === studentLevel)
       && (!status || row.status === status)
@@ -1622,11 +1626,13 @@ async function createPostgresRepository() {
       const params = [];
       const where = [];
       const search = normalizeText(searchParams.get('search'));
+      const seatSearch = normalizeText(searchParams.get('seatSearch'));
       const category = normalizeText(searchParams.get('category'));
       const studentLevel = normalizeText(searchParams.get('studentLevel'));
       const status = normalizeText(searchParams.get('status'));
       const paymentStatus = normalizeText(searchParams.get('paymentStatus'));
       const searchDigits = search.replace(/\D/g, '');
+      const seatSearchDigits = seatSearch.replace(/\D/g, '');
 
       if (search) {
         params.push(`%${search}%`);
@@ -1648,6 +1654,18 @@ async function createPostgresRepository() {
         }
 
         where.push(`(${searchConditions.join(' OR ')})`);
+      }
+
+      if (seatSearch) {
+        params.push(`%${seatSearch}%`);
+        const seatConditions = [`seat_number ILIKE $${params.length}`];
+
+        if (seatSearchDigits) {
+          params.push(`%${seatSearchDigits}%`);
+          seatConditions.push(`REGEXP_REPLACE(COALESCE(seat_number, ''), '\\D', '', 'g') ILIKE $${params.length}`);
+        }
+
+        where.push(`(${seatConditions.join(' OR ')})`);
       }
 
       if (category) {

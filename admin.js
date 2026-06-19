@@ -1,6 +1,7 @@
 const tableBody = document.getElementById('registrations-body');
 const emptyState = document.getElementById('empty-state');
 const searchInput = document.getElementById('search-input');
+const seatSearchInput = document.getElementById('seat-search-input');
 const categoryFilter = document.getElementById('category-filter');
 const gradeFilter = document.getElementById('grade-filter');
 const paymentFilter = document.getElementById('payment-filter');
@@ -143,6 +144,7 @@ function updateRegistrationCountSummary(rows) {
   }, {});
   const activeFilters = [
     searchInput.value.trim() ? `Search: ${searchInput.value.trim()}` : '',
+    seatSearchInput?.value.trim() ? `Seat: ${seatSearchInput.value.trim()}` : '',
     categoryFilter.value ? `Category: ${getSelectedOptionLabel(categoryFilter)}` : '',
     gradeFilter.value ? `Grade: ${gradeFilter.value}` : '',
     paymentFilter.value ? `Payment: ${getSelectedOptionLabel(paymentFilter)}` : '',
@@ -638,6 +640,10 @@ function buildQuery() {
 
   if (searchInput.value.trim()) {
     params.set('search', searchInput.value.trim());
+  }
+
+  if (seatSearchInput?.value.trim()) {
+    params.set('seatSearch', seatSearchInput.value.trim());
   }
 
   if (categoryFilter.value) {
@@ -1408,6 +1414,7 @@ tabButtons.forEach(button => {
 });
 
 searchInput.addEventListener('input', debounce(loadRegistrations));
+seatSearchInput?.addEventListener('input', debounce(loadRegistrations));
 refreshButton.addEventListener('click', loadRegistrations);
 exportExcelButton.addEventListener('click', exportRegistrationsToExcel);
 
