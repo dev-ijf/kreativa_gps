@@ -1027,26 +1027,30 @@ async function createJsonRepository() {
     async health() {
       await ensureDataFile();
       const store = await readStore();
-      const usedTickets = getAttendedTicketCount(store.registrations);
+      const usedSeats = getUsedSeatCount(store.registrations);
+      const attendedTickets = getAttendedTicketCount(store.registrations);
       return {
         ok: true,
         storage: 'json',
         ticketPrice,
         generalTicketPrice,
         ticketQuota,
-        usedSeats: usedTickets,
-        remainingSeats: Math.max(ticketQuota - usedTickets, 0)
+        usedSeats,
+        attendedTickets,
+        remainingSeats: Math.max(ticketQuota - usedSeats, 0)
       };
     },
 
     async config() {
       const store = await readStore();
-      const usedSeats = getAttendedTicketCount(store.registrations);
+      const usedSeats = getUsedSeatCount(store.registrations);
+      const attendedTickets = getAttendedTicketCount(store.registrations);
       return {
         ticketPrice,
         generalTicketPrice,
         ticketQuota,
         usedSeats,
+        attendedTickets,
         remainingSeats: Math.max(ticketQuota - usedSeats, 0)
       };
     },
@@ -1641,17 +1645,21 @@ async function createPostgresRepository() {
     },
 
     async config() {
-      const result = await pool.query(`
+      const usedResult = await pool.query('SELECT seat_number FROM registrations WHERE seat_number IS NOT NULL');
+      const usedRows = usedResult.rows.map(row => ({ seatNumber: row.seat_number }));
+      const usedSeats = getUsedSeatCount(usedRows);
+      const attendedResult = await pool.query(`
         SELECT COALESCE(SUM(attendee_count), 0)::integer AS used_tickets
         FROM registrations
         WHERE status = 'attended'
       `);
-      const usedSeats = Number(result.rows[0]?.used_tickets || 0);
+      const attendedTickets = Number(attendedResult.rows[0]?.used_tickets || 0);
       return {
         ticketPrice,
         generalTicketPrice,
         ticketQuota,
         usedSeats,
+        attendedTickets,
         remainingSeats: Math.max(ticketQuota - usedSeats, 0)
       };
     },

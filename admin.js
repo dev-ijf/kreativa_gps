@@ -11,6 +11,7 @@ const exportExcelButton = document.getElementById('export-excel-btn');
 const registrationCountSummary = document.getElementById('registration-count-summary');
 const quotaTotal = document.getElementById('admin-quota-total');
 const quotaUsed = document.getElementById('admin-quota-used');
+const quotaAttended = document.getElementById('admin-quota-attended');
 const quotaRemaining = document.getElementById('admin-quota-remaining');
 const tabButtons = document.querySelectorAll('[data-admin-tab]');
 const tabPanels = document.querySelectorAll('[data-admin-panel]');
@@ -717,6 +718,7 @@ async function loadQuotaSummary() {
 
   quotaTotal.textContent = config.ticketQuota ?? '-';
   quotaUsed.textContent = config.usedSeats ?? '-';
+  if (quotaAttended) quotaAttended.textContent = config.attendedTickets ?? '-';
   quotaRemaining.textContent = config.remainingSeats ?? '-';
 }
 
