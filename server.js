@@ -705,6 +705,12 @@ function getUsedSeatCount(existingRows) {
   return getUsedSeatNumbers(existingRows).size;
 }
 
+function getAttendedTicketCount(rows) {
+  return rows
+    .filter(row => row.status === 'attended')
+    .reduce((total, row) => total + normalizeCount(row.attendeeCount, 1), 0);
+}
+
 function toRegistration(payload, existingRows) {
   const category = normalizeText(payload.category || payload.parentCategory);
   const now = new Date().toISOString();
@@ -1021,20 +1027,21 @@ async function createJsonRepository() {
     async health() {
       await ensureDataFile();
       const store = await readStore();
+      const usedTickets = getAttendedTicketCount(store.registrations);
       return {
         ok: true,
         storage: 'json',
         ticketPrice,
         generalTicketPrice,
         ticketQuota,
-        usedSeats: getUsedSeatCount(store.registrations),
-        remainingSeats: Math.max(ticketQuota - getUsedSeatCount(store.registrations), 0)
+        usedSeats: usedTickets,
+        remainingSeats: Math.max(ticketQuota - usedTickets, 0)
       };
     },
 
     async config() {
       const store = await readStore();
-      const usedSeats = getUsedSeatCount(store.registrations);
+      const usedSeats = getAttendedTicketCount(store.registrations);
       return {
         ticketPrice,
         generalTicketPrice,
@@ -1634,9 +1641,12 @@ async function createPostgresRepository() {
     },
 
     async config() {
-      const result = await pool.query('SELECT seat_number FROM registrations WHERE seat_number IS NOT NULL');
-      const rows = result.rows.map(row => ({ seatNumber: row.seat_number }));
-      const usedSeats = getUsedSeatCount(rows);
+      const result = await pool.query(`
+        SELECT COALESCE(SUM(attendee_count), 0)::integer AS used_tickets
+        FROM registrations
+        WHERE status = 'attended'
+      `);
+      const usedSeats = Number(result.rows[0]?.used_tickets || 0);
       return {
         ticketPrice,
         generalTicketPrice,
